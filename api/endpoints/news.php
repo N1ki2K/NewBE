@@ -1,197 +1,96 @@
 <?php
-// ====================================================
-// News Management Endpoints
-// ====================================================
 
-class NewsEndpoints {
+$action = isset($_GET['action']) ? $_GET['action'] : 'getAll';
 
-    private $db;
-
-    public function __construct() {
-        $this->db = Database::getInstance();
-    }
-
-    // GET /api/news
-    public function getNews() {
-        $language = $_GET['lang'] ?? 'bg';
-        $publishedOnly = $_GET['published'] ?? 'true';
-
-        $sql = "SELECT * FROM news WHERE language = ?";
-        $params = [$language];
-
-        if ($publishedOnly === 'true') {
-            $sql .= " AND is_published = 1";
+switch ($action) {
+    case 'getSingle':
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $sql = "SELECT n.*, u.name as author_name 
+                    FROM news n
+                    LEFT JOIN users u ON n.author_id = u.id
+                    WHERE n.id = $id";
+            $result = $conn->query($sql);
+            $article = $result->fetch_assoc();
+            header('Content-Type: application/json');
+            echo json_encode($article);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for getSingle action']);
         }
+        break;
 
-        $sql .= " ORDER BY published_at DESC, created_at DESC";
-
-        $news = $this->db->fetchAll($sql, $params);
-        jsonResponse($news);
-    }
-
-    // GET /api/news/featured/latest
-    public function getFeaturedNews() {
-        $language = $_GET['lang'] ?? 'bg';
-        $limit = (int)($_GET['limit'] ?? 3);
-
-        $news = $this->db->fetchAll(
-            "SELECT * FROM news
-             WHERE language = ? AND is_published = 1 AND is_featured = 1
-             ORDER BY published_at DESC, created_at DESC
-             LIMIT ?",
-            [$language, $limit]
-        );
-
-        jsonResponse($news);
-    }
-
-    // GET /api/news/:id
-    public function getNewsArticle($id) {
-        $language = $_GET['lang'] ?? 'bg';
-
-        $article = $this->db->fetchOne(
-            "SELECT * FROM news WHERE id = ? AND language = ?",
-            [$id, $language]
-        );
-
-        if (!$article) {
-            errorResponse('News article not found', 404);
+    case 'create':
+        AuthMiddleware::check();
+        $data = json_decode(file_get_contents('php://input'), true);
+        $title = $conn->real_escape_string($data['title']);
+        $content = $conn->real_escape_string($data['content']);
+        $author_id = $conn->real_escape_string($data['author_id']);
+        $image_url = isset($data['image_url']) ? $conn->real_escape_string($data['image_url']) : null;
+        $sql = "INSERT INTO news (title, content, author_id, image_url) VALUES ('$title', '$content', '$author_id', '$image_url')";
+        if ($conn->query($sql) === TRUE) {
+            echo json_encode(['message' => 'News article created successfully', 'id' => $conn->insert_id]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error creating news article: ' . $conn->error]);
         }
+        break;
 
-        // Increment view count
-        $this->db->query(
-            "UPDATE news SET view_count = view_count + 1 WHERE id = ?",
-            [$id]
-        );
+    case 'update':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $title = $conn->real_escape_string($data['title']);
+            $content = $conn->real_escape_string($data['content']);
+            $image_url = isset($data['image_url']) ? $conn->real_escape_string($data['image_url']) : null;
+            $sql = "UPDATE news SET title = '$title', content = '$content', image_url = '$image_url' WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'News article updated successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error updating news article: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for update action']);
+        }
+        break;
 
-        jsonResponse($article);
-    }
+    case 'delete':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $sql = "DELETE FROM news WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'News article deleted successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error deleting news article: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for delete action']);
+        }
+        break;
 
-    // GET /api/news/admin/all
-    public function getAllNewsForAdmin() {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $news = $this->db->fetchAll(
-            "SELECT n.*, u.username as author_name
-             FROM news n
-             LEFT JOIN users u ON n.author_id = u.id
-             ORDER BY created_at DESC"
-        );
-
-        jsonResponse($news);
-    }
-
-    // POST /api/news/admin
-    public function createNewsArticle() {
-        $user = AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        $requiredFields = ['title', 'slug'];
-        foreach ($requiredFields as $field) {
-            if (!isset($input[$field])) {
-                errorResponse("Field '$field' is required", 400);
+    case 'getAll':
+    default:
+        // This is the original code from your file for fetching all news
+        $sql = "SELECT n.*, u.name as author_name 
+                FROM news n
+                LEFT JOIN users u ON n.author_id = u.id
+                ORDER BY n.created_at DESC";
+        $result = $conn->query($sql);
+        $news = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $news[] = $row;
             }
         }
-
-        $data = [
-            'title' => $input['title'],
-            'slug' => $input['slug'],
-            'excerpt' => $input['excerpt'] ?? null,
-            'content' => $input['content'] ?? null,
-            'language' => $input['language'] ?? 'bg',
-            'author_id' => $user['id'],
-            'category' => $input['category'] ?? null,
-            'featured_image' => $input['featured_image'] ?? null,
-            'is_published' => $input['is_published'] ?? false,
-            'is_featured' => $input['is_featured'] ?? false,
-            'published_at' => isset($input['published_at']) ? $input['published_at'] : null
-        ];
-
-        try {
-            $id = $this->db->insert('news', $data);
-            jsonResponse(['message' => 'News article created', 'id' => $id], 201);
-        } catch (Exception $e) {
-            errorResponse('Failed to create news article: ' . $e->getMessage(), 500);
-        }
-    }
-
-    // PUT /api/news/admin/:id
-    public function updateNewsArticle($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        // Check if article exists
-        $existing = $this->db->fetchOne("SELECT id FROM news WHERE id = ?", [$id]);
-        if (!$existing) {
-            errorResponse('News article not found', 404);
-        }
-
-        $data = [];
-        $allowedFields = ['title', 'slug', 'excerpt', 'content', 'language', 'category',
-                          'featured_image', 'is_published', 'is_featured', 'published_at'];
-
-        foreach ($allowedFields as $field) {
-            if (isset($input[$field])) {
-                $data[$field] = $input[$field];
-            }
-        }
-
-        if (empty($data)) {
-            errorResponse('No valid fields to update', 400);
-        }
-
-        $this->db->update('news', $data, 'id = ?', [$id]);
-        jsonResponse(['message' => 'News article updated']);
-    }
-
-    // DELETE /api/news/admin/:id
-    public function deleteNewsArticle($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $deleted = $this->db->delete('news', 'id = ?', [$id]);
-
-        if ($deleted === 0) {
-            errorResponse('News article not found', 404);
-        }
-
-        jsonResponse(['message' => 'News article deleted']);
-    }
-
-    // GET /api/news/:newsId/attachments
-    public function getNewsAttachments($newsId) {
-        $attachments = $this->db->fetchAll(
-            "SELECT * FROM news_attachments WHERE news_id = ? ORDER BY display_order",
-            [$newsId]
-        );
-
-        jsonResponse($attachments);
-    }
-
-    // POST /api/news/:newsId/attachments (file upload handled in upload.php)
-    // DELETE /api/news/:newsId/attachments/:attachmentId
-    public function deleteNewsAttachment($newsId, $attachmentId) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        // Get attachment info
-        $attachment = $this->db->fetchOne(
-            "SELECT * FROM news_attachments WHERE id = ? AND news_id = ?",
-            [$attachmentId, $newsId]
-        );
-
-        if (!$attachment) {
-            errorResponse('Attachment not found', 404);
-        }
-
-        // Delete file from filesystem
-        if (file_exists($attachment['file_path'])) {
-            unlink($attachment['file_path']);
-        }
-
-        // Delete from database
-        $this->db->delete('news_attachments', 'id = ?', [$attachmentId]);
-
-        jsonResponse(['message' => 'Attachment deleted']);
-    }
+        // NOTE: The large fallback data array has been removed as it should now come from the database.
+        header('Content-Type: application/json');
+        echo json_encode($news);
+        break;
 }
+?>

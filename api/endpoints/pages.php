@@ -1,142 +1,87 @@
 <?php
-// ====================================================
-// Pages Management Endpoints
-// ====================================================
 
-class PagesEndpoints {
+$action = isset($_GET['action']) ? $_GET['action'] : 'getAll';
 
-    private $db;
-
-    public function __construct() {
-        $this->db = Database::getInstance();
-    }
-
-    // GET /api/pages
-    public function getPages() {
-        $pages = $this->db->fetchAll(
-            "SELECT * FROM pages WHERE is_active = 1 ORDER BY position, id"
-        );
-        jsonResponse($pages);
-    }
-
-    // GET /api/pages/all
-    public function getAllPages() {
-        $pages = $this->db->fetchAll(
-            "SELECT * FROM pages ORDER BY position, id"
-        );
-        jsonResponse($pages);
-    }
-
-    // POST /api/pages
-    public function createPage() {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        $requiredFields = ['id', 'title', 'slug'];
-        foreach ($requiredFields as $field) {
-            if (!isset($input[$field])) {
-                errorResponse("Field '$field' is required", 400);
-            }
-        }
-
-        $data = [
-            'id' => $input['id'],
-            'title' => $input['title'],
-            'slug' => $input['slug'],
-            'description' => $input['description'] ?? null,
-            'template' => $input['template'] ?? null,
-            'parent_id' => $input['parent_id'] ?? null,
-            'position' => $input['position'] ?? 0,
-            'is_active' => $input['is_active'] ?? true,
-            'is_published' => $input['is_published'] ?? true,
-            'meta_title' => $input['meta_title'] ?? null,
-            'meta_description' => $input['meta_description'] ?? null,
-            'meta_keywords' => $input['meta_keywords'] ?? null
-        ];
-
-        try {
-            $this->db->insert('pages', $data);
-            jsonResponse(['message' => 'Page created', 'id' => $input['id']], 201);
-        } catch (Exception $e) {
-            errorResponse('Failed to create page: ' . $e->getMessage(), 500);
-        }
-    }
-
-    // PUT /api/pages/:id
-    public function updatePage($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        // Check if page exists
-        $existing = $this->db->fetchOne("SELECT id FROM pages WHERE id = ?", [$id]);
-        if (!$existing) {
-            errorResponse('Page not found', 404);
-        }
-
-        $data = [];
-        $allowedFields = ['title', 'slug', 'description', 'template', 'parent_id', 'position',
-                          'is_active', 'is_published', 'meta_title', 'meta_description', 'meta_keywords'];
-
-        foreach ($allowedFields as $field) {
-            if (isset($input[$field])) {
-                $data[$field] = $input[$field];
-            }
-        }
-
-        if (empty($data)) {
-            errorResponse('No valid fields to update', 400);
-        }
-
-        $this->db->update('pages', $data, 'id = ?', [$id]);
-        jsonResponse(['message' => 'Page updated']);
-    }
-
-    // DELETE /api/pages/:id
-    public function deletePage($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $permanent = $_GET['permanent'] ?? false;
-
-        if ($permanent) {
-            $deleted = $this->db->delete('pages', 'id = ?', [$id]);
+switch ($action) {
+    case 'getSingle':
+         if (isset($_GET['slug'])) {
+            $slug = $conn->real_escape_string($_GET['slug']);
+            $sql = "SELECT * FROM pages WHERE slug = '$slug'";
+            $result = $conn->query($sql);
+            $page = $result->fetch_assoc();
+            header('Content-Type: application/json');
+            echo json_encode($page);
         } else {
-            $deleted = $this->db->update('pages', ['is_active' => false], 'id = ?', [$id]);
+            http_response_code(400);
+            echo json_encode(['error' => 'Slug is required for getSingle action']);
         }
-
-        if ($deleted === 0) {
-            errorResponse('Page not found', 404);
+        break;
+        
+    case 'create':
+        AuthMiddleware::check();
+        $data = json_decode(file_get_contents('php://input'), true);
+        $title = $conn->real_escape_string($data['title']);
+        $slug = $conn->real_escape_string($data['slug']);
+        $content = $conn->real_escape_string($data['content']);
+        $sql = "INSERT INTO pages (title, slug, content) VALUES ('$title', '$slug', '$content')";
+        if ($conn->query($sql) === TRUE) {
+            echo json_encode(['message' => 'Page created successfully', 'id' => $conn->insert_id]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error creating page: ' . $conn->error]);
         }
+        break;
 
-        jsonResponse(['message' => 'Page deleted']);
-    }
-
-    // POST /api/pages/reorder
-    public function reorderPages() {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        $pages = $input['pages'] ?? [];
-
-        if (empty($pages)) {
-            errorResponse('No pages provided', 400);
-        }
-
-        $this->db->beginTransaction();
-
-        try {
-            foreach ($pages as $index => $page) {
-                if (isset($page['id'])) {
-                    $this->db->update('pages', ['position' => $index], 'id = ?', [$page['id']]);
-                }
+    case 'update':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $title = $conn->real_escape_string($data['title']);
+            $slug = $conn->real_escape_string($data['slug']);
+            $content = $conn->real_escape_string($data['content']);
+            $sql = "UPDATE pages SET title = '$title', slug = '$slug', content = '$content' WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'Page updated successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error updating page: ' . $conn->error]);
             }
-
-            $this->db->commit();
-            jsonResponse(['message' => 'Pages reordered']);
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            errorResponse('Reorder failed: ' . $e->getMessage(), 500);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for update action']);
         }
-    }
+        break;
+
+    case 'delete':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $sql = "DELETE FROM pages WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'Page deleted successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error deleting page: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for delete action']);
+        }
+        break;
+
+    case 'getAll':
+    default:
+        $sql = "SELECT id, title, slug FROM pages ORDER BY title ASC";
+        $result = $conn->query($sql);
+        $pages = [];
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $pages[] = $row;
+            }
+        }
+        header('Content-Type: application/json');
+        echo json_encode($pages);
+        break;
 }
+?>

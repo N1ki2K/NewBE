@@ -1,57 +1,51 @@
+import React, { createContext, useState, useContext, ReactNode } from 'react';
+import en from '../locales/en';
+import bg from '../locales/bg';
 
-import React, { createContext, useContext, useMemo } from 'react';
-import { useTranslationsSimple } from '../hooks/useTranslationsSimple';
-
-type Locale = 'bg';
+type Translations = typeof en;
+type Language = 'en' | 'bg';
 
 interface LanguageContextType {
-  locale: Locale;
-  setLocale: (locale: Locale) => void;
-  t: any;
-  flatTranslations: { [key: string]: string };
-  loading: boolean;
-  error: string | null;
-  refreshTranslations: (lang?: string) => Promise<void>;
-  getTranslation: (keyPath: string, fallback?: string) => string;
+  language: Language;
+  setLanguage: (language: Language) => void;
+  translations: Translations;
 }
 
-export const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const locale: Locale = 'bg';
-  const setLocale = () => {}; // No-op function
+export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+  const [language, setLanguage] = useState<Language>('bg'); // Default language
 
-  const {
-    translations,
-    flatTranslations,
-    loading,
-    error,
-    t: getTranslation,
-    refreshTranslations
-  } = useTranslationsSimple(locale);
-
-  const value = useMemo(() => ({
-    locale,
-    setLocale,
-    t: translations,
-    flatTranslations,
-    loading,
-    error,
-    refreshTranslations,
-    getTranslation,
-  }), [translations, flatTranslations, loading, error, getTranslation]);
+  const translations = language === 'en' ? en : bg;
 
   return (
-    <LanguageContext.Provider value={value}>
+    <LanguageContext.Provider value={{ language, setLanguage, translations }}>
       {children}
     </LanguageContext.Provider>
   );
 };
 
-export const useLanguage = (): LanguageContextType => {
+export const useLanguage = () => {
   const context = useContext(LanguageContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useLanguage must be used within a LanguageProvider');
   }
   return context;
+};
+
+export const useTranslations = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useTranslations must be used within a LanguageProvider');
+  }
+  return context.translations;
+};
+
+// This function is defined here, so no import is needed.
+export const useTranslationsSimple = () => {
+  const context = useContext(LanguageContext);
+  if (!context) {
+    throw new Error('useTranslationsSimple must be used within a LanguageProvider');
+  }
+  return context.translations;
 };

@@ -9,13 +9,13 @@ ini_set('display_errors', 1);
 
 // Database Configuration
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'nukgsz_cms');
-define('DB_USER', 'nukgszco');
+define('DB_NAME', 'nukgszco_3ou_Cms');
+define('DB_USER', 'nukgszco_nukgszc');
 define('DB_PASS', 'hk~Gn-EG7f8J');
 define('DB_CHARSET', 'utf8mb4');
 
 // JWT Configuration
-define('JWT_SECRET', 'nukgsz_secret_key_change_this_in_production_2024');
+define('JWT_SECRET', 'gramatikovkazacheshtedoidevofisavpetnajseineshtoanieoshtegochakamgevosemnaiseipolovina');
 define('JWT_ALGORITHM', 'HS256');
 define('JWT_EXPIRATION', 86400); // 24 hours in seconds
 

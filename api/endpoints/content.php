@@ -1,168 +1,66 @@
 <?php
-// ====================================================
-// Content Management Endpoints
-// ====================================================
 
-class ContentEndpoints {
+$action = isset($_GET['action']) ? $_GET['action'] : 'getAll';
 
-    private $db;
-
-    public function __construct() {
-        $this->db = Database::getInstance();
-    }
-
-    // GET /api/content
-    public function getAllContentSections() {
-        $sections = $this->db->fetchAll(
-            "SELECT * FROM content_sections WHERE is_active = 1 ORDER BY position, id"
-        );
-        jsonResponse($sections);
-    }
-
-    // GET /api/content/page/:pageId
-    public function getContentByPage($pageId) {
-        $sections = $this->db->fetchAll(
-            "SELECT * FROM content_sections WHERE page_id = ? AND is_active = 1 ORDER BY position, id",
-            [$pageId]
-        );
-        jsonResponse($sections);
-    }
-
-    // GET /api/content/:id
-    public function getContentSection($id) {
-        $section = $this->db->fetchOne(
-            "SELECT * FROM content_sections WHERE id = ?",
-            [$id]
-        );
-
-        if (!$section) {
-            errorResponse('Content section not found', 404);
+switch ($action) {
+    case 'getSingle':
+        if (isset($_GET['key'])) {
+            $key = $conn->real_escape_string($_GET['key']);
+            $sql = "SELECT * FROM content WHERE content_key = '$key'";
+            $result = $conn->query($sql);
+            $content_item = $result->fetch_assoc();
+            header('Content-Type: application/json');
+            echo json_encode($content_item);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Key is required for getSingle action']);
         }
+        break;
 
-        jsonResponse($section);
-    }
+    case 'save': // This action handles both creating and updating
+        AuthMiddleware::check();
+        $data = json_decode(file_get_contents('php://input'), true);
+        $key = $conn->real_escape_string($data['content_key']);
+        $value = $conn->real_escape_string($data['content_value']);
+        // Use INSERT ... ON DUPLICATE KEY UPDATE for a single, efficient query
+        $sql = "INSERT INTO content (content_key, content_value) VALUES ('$key', '$value') ON DUPLICATE KEY UPDATE content_value = VALUES(content_value)";
+        if ($conn->query($sql) === TRUE) {
+            echo json_encode(['message' => 'Content saved successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error saving content: ' . $conn->error]);
+        }
+        break;
+        
+    case 'delete':
+        AuthMiddleware::check();
+        if (isset($_GET['key'])) {
+            $key = $conn->real_escape_string($_GET['key']);
+            $sql = "DELETE FROM content WHERE content_key = '$key'";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'Content deleted successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error deleting content: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Key is required for delete action']);
+        }
+        break;
 
-    // POST /api/content
-    public function createContentSection() {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        $requiredFields = ['id', 'page_id', 'section_type'];
-        foreach ($requiredFields as $field) {
-            if (!isset($input[$field])) {
-                errorResponse("Field '$field' is required", 400);
+    case 'getAll':
+    default:
+        $sql = "SELECT * FROM content";
+        $result = $conn->query($sql);
+        $content = [];
+        if ($result && $result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $content[] = $row;
             }
         }
-
-        $data = [
-            'id' => $input['id'],
-            'page_id' => $input['page_id'],
-            'section_type' => $input['section_type'],
-            'title' => $input['title'] ?? null,
-            'content' => $input['content'] ?? null,
-            'language' => $input['language'] ?? 'bg',
-            'position' => $input['position'] ?? 0,
-            'metadata' => isset($input['metadata']) ? json_encode($input['metadata']) : null,
-            'is_active' => $input['is_active'] ?? true
-        ];
-
-        try {
-            $this->db->insert('content_sections', $data);
-            jsonResponse(['message' => 'Content section created', 'id' => $input['id']], 201);
-        } catch (Exception $e) {
-            errorResponse('Failed to create content section: ' . $e->getMessage(), 500);
-        }
-    }
-
-    // PUT /api/content/:id
-    public function updateContentSection($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        // Check if section exists
-        $existing = $this->db->fetchOne("SELECT id FROM content_sections WHERE id = ?", [$id]);
-        if (!$existing) {
-            errorResponse('Content section not found', 404);
-        }
-
-        $data = [];
-        $allowedFields = ['page_id', 'section_type', 'title', 'content', 'language', 'position', 'is_active'];
-
-        foreach ($allowedFields as $field) {
-            if (isset($input[$field])) {
-                $data[$field] = $input[$field];
-            }
-        }
-
-        if (isset($input['metadata'])) {
-            $data['metadata'] = json_encode($input['metadata']);
-        }
-
-        if (empty($data)) {
-            errorResponse('No valid fields to update', 400);
-        }
-
-        $this->db->update('content_sections', $data, 'id = ?', [$id]);
-        jsonResponse(['message' => 'Content section updated']);
-    }
-
-    // DELETE /api/content/:id
-    public function deleteContentSection($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $deleted = $this->db->delete('content_sections', 'id = ?', [$id]);
-
-        if ($deleted === 0) {
-            errorResponse('Content section not found', 404);
-        }
-
-        jsonResponse(['message' => 'Content section deleted']);
-    }
-
-    // POST /api/content/bulk-update
-    public function bulkUpdateContentSections() {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-        $sections = $input['sections'] ?? [];
-
-        if (empty($sections)) {
-            errorResponse('No sections provided', 400);
-        }
-
-        $this->db->beginTransaction();
-
-        try {
-            foreach ($sections as $section) {
-                if (!isset($section['id'])) {
-                    continue;
-                }
-
-                $data = [];
-                $allowedFields = ['page_id', 'section_type', 'title', 'content', 'language', 'position', 'is_active'];
-
-                foreach ($allowedFields as $field) {
-                    if (isset($section[$field])) {
-                        $data[$field] = $section[$field];
-                    }
-                }
-
-                if (isset($section['metadata'])) {
-                    $data['metadata'] = json_encode($section['metadata']);
-                }
-
-                if (!empty($data)) {
-                    $this->db->update('content_sections', $data, 'id = ?', [$section['id']]);
-                }
-            }
-
-            $this->db->commit();
-            jsonResponse(['message' => 'Content sections updated']);
-        } catch (Exception $e) {
-            $this->db->rollBack();
-            errorResponse('Bulk update failed: ' . $e->getMessage(), 500);
-        }
-    }
+        header('Content-Type: application/json');
+        echo json_encode($content);
+        break;
 }
+?>

@@ -1,47 +1,73 @@
-
-import React, { useMemo } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import { apiService } from '../src/services/api';
+import { News, Event, Staff } from '../types';
+import { searchData, SearchResult } from '../src/search/searchData'; // Corrected import path
+import { useTranslations } from '../context/LanguageContext';
 import PageWrapper from '../components/PageWrapper';
-import { useLanguage } from '../context/LanguageContext';
-import { searchData } from '../search/searchData';
+
+const useQuery = () => {
+  return new URLSearchParams(useLocation().search);
+};
 
 const SearchResultsPage: React.FC = () => {
-    const [searchParams] = useSearchParams();
-    const query = searchParams.get('q');
-    const { locale, t, getTranslation } = useLanguage();
+  const query = useQuery().get('query') || '';
+  const translations = useTranslations();
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-    const results = useMemo(() => {
-        if (!query) return [];
-        const lowerCaseQuery = query.toLowerCase();
-        return searchData.filter(page => 
-            page.title[locale].toLowerCase().includes(lowerCaseQuery) ||
-            page.content[locale].toLowerCase().includes(lowerCaseQuery)
-        );
-    }, [query, locale]);
+  useEffect(() => {
+    const fetchAndSearchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch all data from the APIs
+        const newsData = await apiService.get<News[]>('/news');
+        const eventsData = await apiService.get<Event[]>('/events');
+        const staffData = await apiService.get<Staff[]>('/staff');
 
-    return (
-        <PageWrapper title={`${getTranslation('search.results.title', 'Резултати')}: "${query}"`}>
-            {results.length > 0 ? (
-                <div>
-                    <p className="mb-8">{getTranslation('search.results.found', 'Намерени {count} резултата').replace('{count}', results.length.toString())}</p>
-                    <div className="space-y-6">
-                        {results.map(page => (
-                            <div key={page.path} className="pb-4 border-b border-gray-200">
-                                <Link to={page.path} className="text-xl font-bold text-brand-blue hover:text-brand-gold transition-colors">
-                                    {page.title[locale]}
-                                </Link>
-                                <p className="mt-2 text-gray-600">
-                                    {page.content[locale].substring(0, 200)}...
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <p>{getTranslation('search.results.notFound', 'Няма резултати за "{query}"').replace('{query}', query || '')}</p>
-            )}
-        </PageWrapper>
-    );
+        // Perform the search
+        const searchResults = searchData(query, newsData, eventsData, staffData);
+        setResults(searchResults);
+      } catch (error) {
+        console.error("Failed to fetch data for search:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAndSearchData();
+  }, [query]);
+
+  return (
+    <PageWrapper title={`${translations.searchResultsFor} "${query}"`}>
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">
+          {translations.searchResultsFor} "<span className="text-blue-600">{query}</span>"
+        </h1>
+        {loading ? (
+          <p>{translations.loading}...</p>
+        ) : results.length > 0 ? (
+          <div className="space-y-4">
+            {results.map((result, index) => (
+              <div key={index} className="p-4 border rounded-lg shadow-sm">
+                <h2 className="text-xl font-semibold">
+                  <Link to={result.link} className="text-blue-700 hover:underline">
+                    {result.title}
+                  </Link>
+                  <span className="text-sm font-light text-gray-500 ml-2">({result.type})</span>
+                </h2>
+                <p className="text-gray-700 mt-2">
+                  {result.content.substring(0, 150)}...
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>{translations.noResultsFound}</p>
+        )}
+      </div>
+    </PageWrapper>
+  );
 };
 
 export default SearchResultsPage;

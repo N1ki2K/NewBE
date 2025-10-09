@@ -1,143 +1,89 @@
 <?php
-// ====================================================
-// Events and Calendar Endpoints
-// ====================================================
 
-class EventsEndpoints {
+$action = isset($_GET['action']) ? $_GET['action'] : 'getAll';
 
-    private $db;
-
-    public function __construct() {
-        $this->db = Database::getInstance();
-    }
-
-    // GET /api/events
-    public function getEvents() {
-        $locale = $_GET['locale'] ?? 'en';
-        $start = $_GET['start'] ?? null;
-        $end = $_GET['end'] ?? null;
-
-        $sql = "SELECT * FROM events WHERE language = ? AND is_published = 1";
-        $params = [$locale];
-
-        if ($start && $end) {
-            $sql .= " AND start_date >= ? AND end_date <= ?";
-            $params[] = $start;
-            $params[] = $end;
+switch ($action) {
+    case 'getSingle':
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $sql = "SELECT * FROM events WHERE id = $id";
+            $result = $conn->query($sql);
+            $event = $result->fetch_assoc();
+            header('Content-Type: application/json');
+            echo json_encode($event);
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for getSingle action']);
         }
+        break;
 
-        $sql .= " ORDER BY start_date ASC";
-
-        $events = $this->db->fetchAll($sql, $params);
-        jsonResponse(['events' => $events]);
-    }
-
-    // GET /api/events/public/upcoming
-    public function getUpcomingEvents() {
-        $locale = $_GET['locale'] ?? 'en';
-        $limit = (int)($_GET['limit'] ?? 10);
-
-        $events = $this->db->fetchAll(
-            "SELECT * FROM events
-             WHERE language = ? AND is_published = 1 AND start_date >= NOW()
-             ORDER BY start_date ASC
-             LIMIT ?",
-            [$locale, $limit]
-        );
-
-        jsonResponse(['events' => $events]);
-    }
-
-    // GET /api/events/:id
-    public function getEvent($id) {
-        $event = $this->db->fetchOne(
-            "SELECT * FROM events WHERE id = ?",
-            [$id]
-        );
-
-        if (!$event) {
-            errorResponse('Event not found', 404);
+    case 'create':
+        AuthMiddleware::check();
+        $data = json_decode(file_get_contents('php://input'), true);
+        $title = $conn->real_escape_string($data['title']);
+        $description = $conn->real_escape_string($data['description']);
+        $event_date = $conn->real_escape_string($data['event_date']);
+        $image_url = isset($data['image_url']) ? $conn->real_escape_string($data['image_url']) : null;
+        $sql = "INSERT INTO events (title, description, event_date, image_url) VALUES ('$title', '$description', '$event_date', '$image_url')";
+        if ($conn->query($sql) === TRUE) {
+            echo json_encode(['message' => 'Event created successfully', 'id' => $conn->insert_id]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error creating event: ' . $conn->error]);
         }
+        break;
 
-        jsonResponse(['event' => $event]);
-    }
+    case 'update':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $data = json_decode(file_get_contents('php://input'), true);
+            $title = $conn->real_escape_string($data['title']);
+            $description = $conn->real_escape_string($data['description']);
+            $event_date = $conn->real_escape_string($data['event_date']);
+            $image_url = isset($data['image_url']) ? $conn->real_escape_string($data['image_url']) : null;
+            $sql = "UPDATE events SET title = '$title', description = '$description', event_date = '$event_date', image_url = '$image_url' WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'Event updated successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error updating event: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for update action']);
+        }
+        break;
 
-    // POST /api/events
-    public function createEvent() {
-        $user = AuthMiddleware::requireEditorOrAdmin();
+    case 'delete':
+        AuthMiddleware::check();
+        if (isset($_GET['id'])) {
+            $id = $conn->real_escape_string($_GET['id']);
+            $sql = "DELETE FROM events WHERE id = $id";
+            if ($conn->query($sql) === TRUE) {
+                echo json_encode(['message' => 'Event deleted successfully']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['error' => 'Error deleting event: ' . $conn->error]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'ID is required for delete action']);
+        }
+        break;
 
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        $requiredFields = ['title', 'start_date'];
-        foreach ($requiredFields as $field) {
-            if (!isset($input[$field])) {
-                errorResponse("Field '$field' is required", 400);
+    case 'getAll':
+    default:
+        $sql = "SELECT * FROM events ORDER BY event_date DESC";
+        $result = $conn->query($sql);
+        $events = [];
+        if ($result->num_rows > 0) {
+            while($row = $result->fetch_assoc()) {
+                $events[] = $row;
             }
         }
-
-        $data = [
-            'title' => $input['title'],
-            'description' => $input['description'] ?? null,
-            'content' => $input['content'] ?? null,
-            'language' => $input['language'] ?? 'bg',
-            'start_date' => $input['start_date'],
-            'end_date' => $input['end_date'] ?? null,
-            'all_day' => $input['all_day'] ?? false,
-            'location' => $input['location'] ?? null,
-            'color' => $input['color'] ?? null,
-            'category' => $input['category'] ?? null,
-            'is_published' => $input['is_published'] ?? true,
-            'created_by' => $user['id']
-        ];
-
-        try {
-            $id = $this->db->insert('events', $data);
-            jsonResponse(['message' => 'Event created', 'id' => $id], 201);
-        } catch (Exception $e) {
-            errorResponse('Failed to create event: ' . $e->getMessage(), 500);
-        }
-    }
-
-    // PUT /api/events/:id
-    public function updateEvent($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $input = json_decode(file_get_contents('php://input'), true);
-
-        // Check if event exists
-        $existing = $this->db->fetchOne("SELECT id FROM events WHERE id = ?", [$id]);
-        if (!$existing) {
-            errorResponse('Event not found', 404);
-        }
-
-        $data = [];
-        $allowedFields = ['title', 'description', 'content', 'language', 'start_date', 'end_date',
-                          'all_day', 'location', 'color', 'category', 'is_published'];
-
-        foreach ($allowedFields as $field) {
-            if (isset($input[$field])) {
-                $data[$field] = $input[$field];
-            }
-        }
-
-        if (empty($data)) {
-            errorResponse('No valid fields to update', 400);
-        }
-
-        $this->db->update('events', $data, 'id = ?', [$id]);
-        jsonResponse(['message' => 'Event updated']);
-    }
-
-    // DELETE /api/events/:id
-    public function deleteEvent($id) {
-        AuthMiddleware::requireEditorOrAdmin();
-
-        $deleted = $this->db->delete('events', 'id = ?', [$id]);
-
-        if ($deleted === 0) {
-            errorResponse('Event not found', 404);
-        }
-
-        jsonResponse(['message' => 'Event deleted']);
-    }
+        header('Content-Type: application/json');
+        echo json_encode($events);
+        break;
 }
+?>
