@@ -1,0 +1,13 @@
+Контролен панел: https://kimba.superhosting.bg:2083/ (SSL - криптирана връзка)
+Контролен панел: http://www.nukgsz.com/cpanel/
+Потребителско име: nukgszco
+Парола: hk~Gn-EG7f8J
+--------------------------------------------------------------
+FTP сървър: ftp.nukgsz.com или kimba.superhosting.bg
+FTP потребителско име: nukgszco
+FTP парола: hk~Gn-EG7f8J
+
+
+http://nukgsz.com/administrator/index.php
+user: nukgsz
+pass: oukgsz2023!

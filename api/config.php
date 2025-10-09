@@ -1,0 +1,93 @@
+<?php
+// ====================================================
+// Configuration File
+// ====================================================
+
+// Error reporting (disable in production)
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+// Database Configuration
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'nukgsz_cms');
+define('DB_USER', 'nukgszco');
+define('DB_PASS', 'hk~Gn-EG7f8J');
+define('DB_CHARSET', 'utf8mb4');
+
+// JWT Configuration
+define('JWT_SECRET', 'nukgsz_secret_key_change_this_in_production_2024');
+define('JWT_ALGORITHM', 'HS256');
+define('JWT_EXPIRATION', 86400); // 24 hours in seconds
+
+// CORS Configuration
+define('ALLOWED_ORIGINS', [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://nukgsz.com',
+    'https://www.nukgsz.com'
+]);
+
+// Upload Configuration
+define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
+define('UPLOAD_PICTURES_DIR', UPLOAD_DIR . 'pictures/');
+define('UPLOAD_DOCUMENTS_DIR', UPLOAD_DIR . 'documents/');
+define('UPLOAD_PRESENTATIONS_DIR', UPLOAD_DIR . 'presentations/');
+define('UPLOAD_MAX_SIZE', 10 * 1024 * 1024); // 10MB
+
+// Allowed file types
+define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+define('ALLOWED_DOCUMENT_TYPES', [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+]);
+define('ALLOWED_PRESENTATION_TYPES', [
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+]);
+
+// API Configuration
+define('API_VERSION', 'v1');
+define('API_BASE_PATH', '/api');
+
+// Timezone
+date_default_timezone_set('Europe/Sofia');
+
+// Create upload directories if they don't exist
+if (!file_exists(UPLOAD_DIR)) {
+    mkdir(UPLOAD_DIR, 0755, true);
+}
+if (!file_exists(UPLOAD_PICTURES_DIR)) {
+    mkdir(UPLOAD_PICTURES_DIR, 0755, true);
+}
+if (!file_exists(UPLOAD_DOCUMENTS_DIR)) {
+    mkdir(UPLOAD_DOCUMENTS_DIR, 0755, true);
+}
+if (!file_exists(UPLOAD_PRESENTATIONS_DIR)) {
+    mkdir(UPLOAD_PRESENTATIONS_DIR, 0755, true);
+}
+
+// Helper Functions
+function jsonResponse($data, $statusCode = 200) {
+    http_response_code($statusCode);
+    header('Content-Type: application/json');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+function errorResponse($message, $statusCode = 400) {
+    jsonResponse(['error' => $message], $statusCode);
+}
+
+function successResponse($data, $message = '') {
+    $response = ['success' => true];
+    if ($message) {
+        $response['message'] = $message;
+    }
+    if ($data !== null) {
+        $response = array_merge($response, $data);
+    }
+    jsonResponse($response);
+}
