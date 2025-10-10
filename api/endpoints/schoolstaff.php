@@ -1,0 +1,346 @@
+<?php
+
+class SchoolStaffEndpoints {
+    private $db;
+    private $columns = null;
+
+    public function __construct() {
+        $this->db = Database::getInstance();
+    }
+
+    public function handle(array $segments, string $method) {
+        $idSegment = isset($segments[1]) ? $segments[1] : '';
+
+        if ($idSegment === '') {
+            $this->handleCollection($method);
+            return;
+        }
+
+        if ($idSegment === 'bulk' && isset($segments[2]) && $segments[2] === 'positions') {
+            $this->handleBulkPositions($method);
+            return;
+        }
+
+        if (!ctype_digit($idSegment)) {
+            errorResponse('Not Found', 404);
+        }
+
+        $id = (int)$idSegment;
+        $subSegment = isset($segments[2]) ? $segments[2] : '';
+
+        if ($subSegment === 'image') {
+            $this->handleImage($method, $id);
+            return;
+        }
+
+        $this->handleSingle($method, $id);
+    }
+
+    private function handleCollection(string $method) {
+        switch ($method) {
+            case 'GET':
+                $this->listStaff();
+                break;
+            case 'POST':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->createStaff();
+                break;
+            default:
+                errorResponse('Method not allowed', 405);
+        }
+    }
+
+    private function handleSingle(string $method, int $id) {
+        switch ($method) {
+            case 'GET':
+                $this->getStaffMember($id);
+                break;
+            case 'PUT':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->updateStaffMember($id);
+                break;
+            case 'DELETE':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->deleteStaffMember($id);
+                break;
+            default:
+                errorResponse('Method not allowed', 405);
+        }
+    }
+
+    private function handleBulkPositions(string $method) {
+        if ($method !== 'PUT') {
+            errorResponse('Method not allowed', 405);
+        }
+
+        AuthMiddleware::requireEditorOrAdmin();
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['staffList']) || !is_array($input['staffList'])) {
+            errorResponse('staffList array is required', 400);
+        }
+
+        $orderColumn = $this->getOrderColumn();
+
+        foreach ($input['staffList'] as $item) {
+            if (!isset($item['id'])) {
+                continue;
+            }
+
+            $orderValue = isset($item['position']) ? (int)$item['position'] : (isset($item[$orderColumn]) ? (int)$item[$orderColumn] : 0);
+
+            $data = array($orderColumn => $orderValue);
+
+            $this->db->update(
+                'school_staff',
+                $data,
+                'id = :id',
+                array('id' => (int)$item['id'])
+            );
+        }
+
+        jsonResponse(['message' => 'Positions updated successfully']);
+    }
+
+    private function handleImage(string $method, int $id) {
+        if (!$this->columnExists('image_url') && !$this->columnExists('image_filename')) {
+            errorResponse('Image support is not configured for school staff', 501);
+        }
+
+        switch ($method) {
+            case 'GET':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->getStaffImage($id);
+                break;
+            case 'POST':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->setStaffImage($id);
+                break;
+            case 'DELETE':
+                AuthMiddleware::requireEditorOrAdmin();
+                $this->deleteStaffImage($id);
+                break;
+            default:
+                errorResponse('Method not allowed', 405);
+        }
+    }
+
+    private function listStaff() {
+        $orderColumn = $this->getOrderColumn();
+        $rows = $this->db->fetchAll("SELECT * FROM school_staff ORDER BY {$orderColumn} ASC, name ASC");
+
+        $result = array_map(function($row) {
+            return $this->mapRow($row);
+        }, $rows);
+
+        jsonResponse($result);
+    }
+
+    private function getStaffMember(int $id) {
+        $row = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
+
+        if (!$row) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        jsonResponse($this->mapRow($row));
+    }
+
+    private function createStaff() {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $name = isset($input['name']) ? trim($input['name']) : '';
+        if ($name === '') {
+            errorResponse('Name is required', 400);
+        }
+
+        $orderColumn = $this->getOrderColumn();
+        $data = array(
+            'name' => $name,
+            'position' => isset($input['role']) ? trim($input['role']) : (isset($input['positionTitle']) ? trim($input['positionTitle']) : ''),
+            'department' => isset($input['department']) ? trim($input['department']) : null,
+            'email' => isset($input['email']) ? trim($input['email']) : null,
+            'phone' => isset($input['phone']) ? trim($input['phone']) : null,
+            'bio' => isset($input['bio']) ? $input['bio'] : null,
+            $orderColumn => isset($input['position']) ? (int)$input['position'] : 0,
+            'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
+            'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
+            'image_alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null,
+            'is_active' => isset($input['is_active']) ? (int)!!$input['is_active'] : 1
+        );
+
+        $filtered = $this->filterColumns($data);
+
+        if (empty($filtered['position']) && !isset($filtered['position'])) {
+            unset($filtered['position']);
+        }
+
+        $id = $this->db->insert('school_staff', $filtered);
+        $newRow = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
+
+        jsonResponse($this->mapRow($newRow), 201);
+    }
+
+    private function updateStaffMember(int $id) {
+        $existing = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
+        if (!$existing) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $orderColumn = $this->getOrderColumn();
+        $data = array(
+            'name' => isset($input['name']) ? trim($input['name']) : null,
+            'position' => isset($input['role']) ? trim($input['role']) : (isset($input['positionTitle']) ? trim($input['positionTitle']) : null),
+            'department' => array_key_exists('department', $input) ? trim((string)$input['department']) : null,
+            'email' => array_key_exists('email', $input) ? trim((string)$input['email']) : null,
+            'phone' => array_key_exists('phone', $input) ? trim((string)$input['phone']) : null,
+            'bio' => array_key_exists('bio', $input) ? $input['bio'] : null,
+            $orderColumn => array_key_exists('position', $input) ? (int)$input['position'] : null,
+            'image_filename' => array_key_exists('image_filename', $input) ? $input['image_filename'] : null,
+            'image_url' => array_key_exists('image_url', $input) ? $input['image_url'] : null,
+            'image_alt_text' => array_key_exists('alt_text', $input) ? $input['alt_text'] : null,
+            'is_active' => array_key_exists('is_active', $input) ? (int)!!$input['is_active'] : null
+        );
+
+        $filtered = $this->filterColumns($data, true);
+
+        if (empty($filtered)) {
+            jsonResponse($this->mapRow($existing));
+        }
+
+        $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
+        $updated = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
+        jsonResponse($this->mapRow($updated));
+    }
+
+    private function deleteStaffMember(int $id) {
+        $deleted = $this->db->delete('school_staff', 'id = ?', array($id));
+
+        if ($deleted === 0) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        jsonResponse(['message' => 'Staff member deleted successfully']);
+    }
+
+    private function getStaffImage(int $id) {
+        $row = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
+        if (!$row) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        $image = array(
+            'image_filename' => isset($row['image_filename']) ? $row['image_filename'] : null,
+            'image_url' => isset($row['image_url']) ? $row['image_url'] : null,
+            'alt_text' => isset($row['image_alt_text']) ? $row['image_alt_text'] : (isset($row['alt_text']) ? $row['alt_text'] : null)
+        );
+
+        jsonResponse($image);
+    }
+
+    private function setStaffImage(int $id) {
+        $row = $this->db->fetchOne("SELECT id FROM school_staff WHERE id = ?", array($id));
+        if (!$row) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $data = array(
+            'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
+            'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
+            'image_alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null
+        );
+
+        $filtered = $this->filterColumns($data, true);
+
+        if (empty($filtered)) {
+            errorResponse('Image columns not available in schema', 500);
+        }
+
+        $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
+        jsonResponse(['message' => 'Image updated successfully']);
+    }
+
+    private function deleteStaffImage(int $id) {
+        $row = $this->db->fetchOne("SELECT id FROM school_staff WHERE id = ?", array($id));
+        if (!$row) {
+            errorResponse('Staff member not found', 404);
+        }
+
+        $data = array(
+            'image_filename' => null,
+            'image_url' => null,
+            'image_alt_text' => null
+        );
+
+        $filtered = $this->filterColumns($data, true);
+
+        if (empty($filtered)) {
+            errorResponse('Image columns not available in schema', 500);
+        }
+
+        $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
+        jsonResponse(['message' => 'Image removed successfully']);
+    }
+
+    private function mapRow(array $row) {
+        $orderColumn = $this->getOrderColumn();
+        $positionValue = isset($row[$orderColumn]) ? (int)$row[$orderColumn] : 0;
+
+        return array(
+            'id' => (int)$row['id'],
+            'name' => $row['name'],
+            'role' => isset($row['position']) ? $row['position'] : '',
+            'department' => isset($row['department']) ? $row['department'] : null,
+            'email' => isset($row['email']) ? $row['email'] : null,
+            'phone' => isset($row['phone']) ? $row['phone'] : null,
+            'bio' => isset($row['bio']) ? $row['bio'] : null,
+            'position' => $positionValue,
+            'sort_order' => $positionValue,
+            'image_filename' => isset($row['image_filename']) ? $row['image_filename'] : null,
+            'image_url' => isset($row['image_url']) ? $row['image_url'] : null,
+            'alt_text' => isset($row['image_alt_text']) ? $row['image_alt_text'] : (isset($row['alt_text']) ? $row['alt_text'] : null),
+            'is_active' => isset($row['is_active']) ? (bool)$row['is_active'] : true
+        );
+    }
+
+    private function getOrderColumn(): string {
+        if ($this->columnExists('sort_order')) {
+            return 'sort_order';
+        }
+        if ($this->columnExists('display_order')) {
+            return 'display_order';
+        }
+        return 'id';
+    }
+
+    private function getColumns(): array {
+        if ($this->columns === null) {
+            $rows = $this->db->fetchAll("SHOW COLUMNS FROM school_staff");
+            $this->columns = array_map(function($row) {
+                return $row['Field'];
+            }, $rows);
+        }
+        return $this->columns;
+    }
+
+    private function columnExists(string $column): bool {
+        return in_array($column, $this->getColumns(), true);
+    }
+
+    private function filterColumns(array $data, bool $skipNull = false): array {
+        $columns = array_flip($this->getColumns());
+        $filtered = array_intersect_key($data, $columns);
+
+        if ($skipNull) {
+            $filtered = array_filter($filtered, function($value) {
+                return $value !== null;
+            });
+        }
+
+        return $filtered;
+    }
+}
