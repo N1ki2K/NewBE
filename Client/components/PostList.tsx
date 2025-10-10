@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getApiEndpointBase } from '../src/utils/apiBaseUrl';
 interface Post {
   id: number;
   title: string;
@@ -15,8 +16,8 @@ const PostList: React.FC = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${apiBaseUrl}/api/posts`);
+        const apiEndpointBase = getApiEndpointBase();
+        const response = await fetch(`${apiEndpointBase}/posts`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

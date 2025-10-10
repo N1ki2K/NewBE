@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../src/services/api';
+import { getApiBaseUrl } from '../../src/utils/apiBaseUrl';
 
 // Import ImagePicker component
 interface ImagePickerProps {
@@ -14,6 +15,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
   const [picturesImages, setPicturesImages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const apiBaseUrl = getApiBaseUrl();
 
   useEffect(() => {
     loadPicturesImages();
@@ -75,7 +77,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
             {filteredImages.map((image) => {
-              const imageUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${image.url}`;
+              const imageUrl = `${apiBaseUrl}${image.url}`;
               const isSelected = currentImage === imageUrl || currentImage === image.url;
               
               return (

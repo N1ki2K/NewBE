@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import PageWrapper from '../../components/PageWrapper';
+import { getApiBaseUrl } from '../../src/utils/apiBaseUrl';
 
 const PDFViewerPage: React.FC = () => {
   const { filename } = useParams<{ filename: string }>();
@@ -24,7 +25,7 @@ const PDFViewerPage: React.FC = () => {
       displayFilename = currentPath.split('/').pop() || 'document.pdf';
     } else if (filename) {
       // Old-style filename parameter
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const baseUrl = getApiBaseUrl();
       url = `${baseUrl}/Documents/${encodeURIComponent(filename)}`;
       displayFilename = filename;
     } else {

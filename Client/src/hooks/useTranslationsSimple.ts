@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getApiEndpointBase } from '../utils/apiBaseUrl';
 
 // Simple fallback translations to prevent crashes
 const fallbackTranslations = {
@@ -1012,7 +1013,8 @@ export const useTranslationsSimple = (language: string = 'bg') => {
     if (!databaseTranslations[language]) {
       setLoading(true);
       
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/translations?lang=${language}`)
+      const endpointBase = getApiEndpointBase();
+      fetch(`${endpointBase}/translations?lang=${language}`)
         .then(response => response.json())
         .then(data => {
           databaseTranslations[language] = data;
@@ -1056,7 +1058,8 @@ export const useTranslationsSimple = (language: string = 'bg') => {
     setLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/translations?lang=${targetLang}`);
+      const endpointBase = getApiEndpointBase();
+      const response = await fetch(`${endpointBase}/translations?lang=${targetLang}`);
       const data = await response.json();
       databaseTranslations[targetLang] = data;
       forceUpdate({});

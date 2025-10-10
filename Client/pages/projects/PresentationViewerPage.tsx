@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { getApiBaseUrl } from '../../src/utils/apiBaseUrl';
 
 const PresentationViewerPage: React.FC = () => {
   const { filename } = useParams<{ filename: string }>();
@@ -17,7 +18,7 @@ const PresentationViewerPage: React.FC = () => {
       return;
     }
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiBaseUrl = getApiBaseUrl();
     const url = `${apiBaseUrl}/Presentations/${filename}`;
 
     // Set URL directly - the server will handle 404s if file doesn't exist

@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from '../utils/apiBaseUrl';
+
 interface HealthConfig {
   status: string;
   timestamp: string;
@@ -25,7 +27,7 @@ class HealthCheckService {
   private isInitialized = false;
 
   constructor() {
-    this.baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    this.baseUrl = getApiBaseUrl();
   }
 
   static getInstance(): HealthCheckService {

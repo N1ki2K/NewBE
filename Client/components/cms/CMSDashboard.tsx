@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../src/services/api';
+import { getApiBaseUrl, getApiEndpointBase } from '../../src/utils/apiBaseUrl';
 import ContactManagerTab from './ContactManagerTab';
 import InfoAccessManagerTab from './InfoAccessManagerTab';
 import CalendarManagerTab from './CalendarManagerTab';
@@ -27,6 +28,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
   const [picturesImages, setPicturesImages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const apiBaseUrl = getApiBaseUrl();
 
   useEffect(() => {
     loadPicturesImages();
@@ -88,7 +90,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
             {filteredImages.map((image) => {
-              const imageUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${image.url}`;
+              const imageUrl = `${apiBaseUrl}${image.url}`;
               const isSelected = currentImage === imageUrl || currentImage === image.url;
               
               return (
@@ -769,7 +771,7 @@ const HistoryPageTab: React.FC = () => {
               <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                 {staffImages[member.id] ? (
                   <img 
-                    src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${staffImages[member.id].image_url}`}
+                    src={`${apiBaseUrl}${staffImages[member.id].image_url}`}
                     alt={staffImages[member.id].alt_text || member.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -866,7 +868,7 @@ const HistoryPageTab: React.FC = () => {
                     <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
                       {staffImages[editingMember.id] ? (
                         <img 
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${staffImages[editingMember.id].image_url}`}
+                          src={`${apiBaseUrl}${staffImages[editingMember.id].image_url}`}
                           alt="Preview" 
                           className="w-full h-full object-cover"
                         />
@@ -1597,7 +1599,7 @@ const HistoryPageTab: React.FC = () => {
                 <div key={image.filename} className="bg-gray-50 border rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
                   <div className="aspect-square mb-3 bg-gray-200 rounded-lg overflow-hidden">
                     <img 
-                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${image.url}`}
+                      src={`${apiBaseUrl}${image.url}`}
                       alt={image.filename}
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -1871,7 +1873,7 @@ const HistoryPageTab: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <a
-                      href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${document.url}`}
+                      href={`${apiBaseUrl}${document.url}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 p-1"
@@ -1883,7 +1885,7 @@ const HistoryPageTab: React.FC = () => {
                     </a>
                     <button
                       onClick={() => {
-                        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${document.url}`;
+                        const url = `${apiBaseUrl}${document.url}`;
                         navigator.clipboard.writeText(url);
                         alert('URL copied to clipboard!');
                       }}
@@ -2124,7 +2126,7 @@ const HistoryPageTab: React.FC = () => {
                   </div>
                   <div className="flex justify-end space-x-2 mt-3">
                     <button
-                      onClick={() => window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/presentations/${encodeURIComponent(presentation.filename)}`, '_blank')}
+                      onClick={() => window.open(`${apiEndpointBase}/presentations/${encodeURIComponent(presentation.filename)}`, '_blank')}
                       className="text-blue-600 hover:text-blue-800 p-1"
                       title="Download presentation"
                     >
@@ -2551,7 +2553,7 @@ const HistoryPageTab: React.FC = () => {
                       {formData.featured_image_url && (
                         <div className="flex items-center space-x-2">
                           <img
-                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}${formData.featured_image_url}`}
+                            src={`${apiBaseUrl}${formData.featured_image_url}`}
                             alt="Featured"
                             className="w-16 h-16 object-cover rounded"
                           />
@@ -3160,6 +3162,8 @@ const HistoryPageTab: React.FC = () => {
     const [openDropdowns, setOpenDropdowns] = useState<{[key: string]: boolean}>({});
     const { confirm, dialogProps } = useConfirm();
     const { isHealthy, isLoading, error, retry } = useHealthCheck(true);
+    const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+    const apiEndpointBase = useMemo(() => getApiEndpointBase(), []);
   
     // Organize tabs into categories
     const tabCategories = useMemo(() => [

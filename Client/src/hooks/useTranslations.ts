@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../src/services/api';
+import { getApiEndpointBase } from '../src/utils/apiBaseUrl';
 
 // Import static translations as fallback
 let staticTranslations: { bg?: any; en?: any } = {};
@@ -72,7 +73,7 @@ export const useTranslations = (language: string = 'bg') => {
 
     loadPromise = (async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/translations?lang=${lang}`);
+        const response = await fetch(`${getApiEndpointBase()}/translations?lang=${lang}`);
         
         if (!response.ok) {
           throw new Error('Failed to load translations');

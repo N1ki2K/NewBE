@@ -2,9 +2,9 @@
  * Backend Availability Checker
  * Checks if the backend is running before making API calls
  */
+import { getApiEndpointBase } from './apiBaseUrl';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const HEALTH_CHECK_ENDPOINT = `${API_BASE_URL}/api/health`;
+const getHealthCheckEndpoint = () => `${getApiEndpointBase()}/health`;
 const CACHE_DURATION = 30000; // 30 seconds
 
 interface BackendStatus {
@@ -36,7 +36,7 @@ export async function isBackendAvailable(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-    const response = await fetch(HEALTH_CHECK_ENDPOINT, {
+    const response = await fetch(getHealthCheckEndpoint(), {
       method: 'GET',
       signal: controller.signal,
       headers: {

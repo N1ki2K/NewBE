@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService, ApiError } from '../../src/services/api';
+import { getApiEndpointBase } from '../../src/utils/apiBaseUrl';
 
 interface Translation {
   id: string;
@@ -16,7 +17,7 @@ interface Translation {
 
 const TranslationsManagerTab: React.FC = () => {
   const { locale, refreshTranslations } = useLanguage();
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const apiEndpointBase = getApiEndpointBase();
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [filteredTranslations, setFilteredTranslations] = useState<Translation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +45,7 @@ const TranslationsManagerTab: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`${apiBaseUrl}/api/translations`);
+      const response = await fetch(`${apiEndpointBase}/translations`);
       
       if (!response.ok) {
         throw new Error('Failed to load translations');
@@ -105,7 +106,7 @@ const TranslationsManagerTab: React.FC = () => {
       setIsSaving(true);
       
       const response = await fetch(
-        `${apiBaseUrl}/api/translations/${editingId}`,
+        `${apiEndpointBase}/translations/${editingId}`,
         {
           method: 'PUT',
           headers: {

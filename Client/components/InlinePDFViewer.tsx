@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import { getApiBaseUrl } from '../src/utils/apiBaseUrl';
 
 interface InlinePDFViewerProps {
   filename: string;
@@ -28,7 +29,7 @@ const InlinePDFViewer: React.FC<InlinePDFViewerProps> = ({
     }
 
     // Construct the PDF URL
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const baseUrl = getApiBaseUrl();
     const url = `${baseUrl}/Documents/${encodeURIComponent(filename)}`;
     
     // Check if the PDF exists
