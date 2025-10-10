@@ -1,11 +1,13 @@
 const LOCAL_FALLBACK = 'http://localhost:3001';
 
 const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, '');
+const stripApiSuffix = (url: string): string =>
+  url.replace(/\/api$/i, '');
 
 export const getApiBaseUrl = (): string => {
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && typeof envUrl === 'string') {
-    return normalizeBaseUrl(envUrl);
+    return stripApiSuffix(normalizeBaseUrl(envUrl));
   }
 
   if (typeof window !== 'undefined' && window.location) {
