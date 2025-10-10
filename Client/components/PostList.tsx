@@ -15,7 +15,8 @@ const PostList: React.FC = () => {
   useEffect(() => {
     const fetchPosts = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/posts`);
+        const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiBaseUrl}/api/posts`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

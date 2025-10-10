@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../src/services/api';
 import { useNavigationContext } from '../../context/NavigationContext';
-import { useConfirm } from '../../hooks/useConfirm';
+import { useConfirm } from '../../src/hooks/useConfirm';
 import ConfirmDialog from './ConfirmDialog';
 
 interface MenuItem {

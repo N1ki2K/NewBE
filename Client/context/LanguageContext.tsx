@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import en from '../locales/en';
-import bg from '../locales/bg';
+import { en } from '../locales/en';
+import { bg } from '../locales/bg';
 
 type Translations = typeof en;
 type Language = 'en' | 'bg';

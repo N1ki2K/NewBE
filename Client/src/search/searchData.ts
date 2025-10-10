@@ -1,6 +1,5 @@
-
-import { bg } from '../locales/bg';
-import { en } from '../locales/en';
+import { bg } from '../../locales/bg'; // CORRECTED PATH
+import { en } from '../../locales/en'; // CORRECTED PATH
 
 interface SearchablePage {
     path: string;

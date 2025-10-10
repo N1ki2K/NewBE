@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { apiService } from '../src/services/api';
-import { News, Event, Staff } from '../types';
-import { searchData, SearchResult } from '../src/search/searchData'; // Corrected import path
-import { useTranslations } from '../context/LanguageContext';
+import { useLanguage } from '../context/LanguageContext';
 import PageWrapper from '../components/PageWrapper';
+import { searchData } from '../src/search/searchData'; // Import the static data
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -12,31 +10,26 @@ const useQuery = () => {
 
 const SearchResultsPage: React.FC = () => {
   const query = useQuery().get('query') || '';
-  const translations = useTranslations();
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { language, t: translations } = useLanguage();
+  const [results, setResults] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchAndSearchData = async () => {
-      setLoading(true);
-      try {
-        // Fetch all data from the APIs
-        const newsData = await apiService.get<News[]>('/news');
-        const eventsData = await apiService.get<Event[]>('/events');
-        const staffData = await apiService.get<Staff[]>('/staff');
+    if (!query) {
+      setResults([]);
+      return;
+    }
 
-        // Perform the search
-        const searchResults = searchData(query, newsData, eventsData, staffData);
-        setResults(searchResults);
-      } catch (error) {
-        console.error("Failed to fetch data for search:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const lowerCaseQuery = query.toLowerCase();
 
-    fetchAndSearchData();
-  }, [query]);
+    const filteredResults = searchData.filter(page => {
+      const title = page.title[language].toLowerCase();
+      const content = page.content[language].toLowerCase();
+      return title.includes(lowerCaseQuery) || content.includes(lowerCaseQuery);
+    });
+
+    setResults(filteredResults);
+
+  }, [query, language]);
 
   return (
     <PageWrapper title={`${translations.searchResultsFor} "${query}"`}>
@@ -44,20 +37,17 @@ const SearchResultsPage: React.FC = () => {
         <h1 className="text-3xl font-bold mb-6">
           {translations.searchResultsFor} "<span className="text-blue-600">{query}</span>"
         </h1>
-        {loading ? (
-          <p>{translations.loading}...</p>
-        ) : results.length > 0 ? (
+        {results.length > 0 ? (
           <div className="space-y-4">
             {results.map((result, index) => (
               <div key={index} className="p-4 border rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold">
-                  <Link to={result.link} className="text-blue-700 hover:underline">
-                    {result.title}
+                  <Link to={result.path} className="text-blue-700 hover:underline">
+                    {result.title[language]}
                   </Link>
-                  <span className="text-sm font-light text-gray-500 ml-2">({result.type})</span>
                 </h2>
                 <p className="text-gray-700 mt-2">
-                  {result.content.substring(0, 150)}...
+                  {result.content[language].substring(0, 250)}...
                 </p>
               </div>
             ))}

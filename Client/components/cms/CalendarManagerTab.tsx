@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../src/services/api';
-import { useConfirm } from '../../hooks/useConfirm';
+import { useConfirm } from '../../src/hooks/useConfirm'; // CORRECTED PATH
 import ConfirmDialog from './ConfirmDialog';
 
 interface Event {
@@ -17,7 +17,7 @@ interface Event {
 }
 
 const CalendarManagerTab: React.FC = () => {
-  const { t, locale } = useLanguage();
+  const { t, language: locale } = useLanguage(); // CORRECTED: Aliased language to locale
   const { confirm, dialogProps } = useConfirm();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,9 +53,11 @@ const CalendarManagerTab: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await apiService.getEvents();
-      setEvents(response.events || []);
+      // Ensure response is an array before setting
+      setEvents(Array.isArray(response) ? response : []);
     } catch (error) {
       console.error('Failed to load events:', error);
+      setEvents([]); // Set to empty array on error
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +121,7 @@ const CalendarManagerTab: React.FC = () => {
     setFormData({
       title: event.title,
       description: event.description,
-      date: event.date,
+      date: event.date.split('T')[0], // Ensure date is in YYYY-MM-DD format
       startTime: event.startTime,
       endTime: event.endTime,
       type: event.type,
@@ -130,55 +132,55 @@ const CalendarManagerTab: React.FC = () => {
   };
 
   const getEventTypeInfo = (type: Event['type']) => {
-    return eventTypes.find(t => t.value === type) || eventTypes[0];
+    return eventTypes.find(t => t.value === type) || eventTypes[4]; // Default to 'Other'
   };
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const firstDayOfWeek = firstDay.getDay();
-    const daysInMonth = lastDay.getDate();
+    let firstDayOfWeek = firstDay.getDay(); // Sunday - 0, Monday - 1, ...
+    if (firstDayOfWeek === 0) firstDayOfWeek = 7; // Adjust Sunday to be 7
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     
     const days = [];
     
     // Previous month's trailing days
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      const prevDate = new Date(year, month, -i);
-      days.push({
-        date: prevDate,
-        isCurrentMonth: false,
-        events: []
-      });
+    for (let i = firstDayOfWeek - 2; i >= 0; i--) {
+        const prevDate = new Date(year, month, -i);
+        days.push({
+            date: prevDate,
+            isCurrentMonth: false,
+            events: []
+        });
     }
     
     // Current month's days
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dateString = date.toISOString().split('T')[0];
-      const dayEvents = events.filter(event => event.date === dateString);
-      
-      days.push({
-        date,
-        isCurrentMonth: true,
-        events: dayEvents
-      });
+        const date = new Date(year, month, day);
+        const dateString = date.toISOString().split('T')[0];
+        const dayEvents = events.filter(event => event.date.startsWith(dateString));
+        
+        days.push({
+            date,
+            isCurrentMonth: true,
+            events: dayEvents
+        });
     }
     
     // Next month's leading days
     const remainingDays = 42 - days.length;
     for (let day = 1; day <= remainingDays; day++) {
-      const nextDate = new Date(year, month + 1, day);
-      days.push({
-        date: nextDate,
-        isCurrentMonth: false,
-        events: []
-      });
+        const nextDate = new Date(year, month + 1, day);
+        days.push({
+            date: nextDate,
+            isCurrentMonth: false,
+            events: []
+        });
     }
     
     return days;
-  };
+};
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentMonth(prev => {
@@ -263,7 +265,7 @@ const CalendarManagerTab: React.FC = () => {
           <div className="p-4">
             {/* Days of week header */}
             <div className="grid grid-cols-7 gap-1 mb-2">
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                 <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
                   {day}
                 </div>
@@ -500,4 +502,4 @@ const CalendarManagerTab: React.FC = () => {
   );
 };
 
-export default CalendarManagerTab;
+export default CalendarManagerTab;  6
