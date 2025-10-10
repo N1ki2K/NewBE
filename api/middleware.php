@@ -9,7 +9,12 @@ class AuthMiddleware {
 
     public static function authenticate() {
         $headers = getallheaders();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        $authHeader = '';
+        if (isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        } elseif (isset($headers['authorization'])) {
+            $authHeader = $headers['authorization'];
+        }
 
         if (empty($authHeader)) {
             errorResponse('Authorization header missing', 401);

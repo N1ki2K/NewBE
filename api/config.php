@@ -31,7 +31,7 @@ if (!function_exists('normalize_public_path')) {
 }
 
 $backendPublicEnv = getenv('BACKEND_PUBLIC_PATH');
-$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+$scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
 
 if ($backendPublicEnv !== false) {
     $backendPublicPath = normalize_public_path($backendPublicEnv);

@@ -15,8 +15,8 @@ class AuthEndpoints {
     public function login() {
         $input = json_decode(file_get_contents('php://input'), true);
 
-        $username = $input['username'] ?? '';
-        $password = $input['password'] ?? '';
+        $username = isset($input['username']) ? $input['username'] : '';
+        $password = isset($input['password']) ? $input['password'] : '';
 
         if (empty($username) || empty($password)) {
             errorResponse('Username and password are required', 400);
@@ -71,9 +71,14 @@ class AuthEndpoints {
 
         // Get token from header
         $headers = getallheaders();
-        $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        $authHeader = '';
+        if (isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        } elseif (isset($headers['authorization'])) {
+            $authHeader = $headers['authorization'];
+        }
         preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches);
-        $token = $matches[1] ?? '';
+        $token = isset($matches[1]) ? $matches[1] : '';
 
         if ($token) {
             // Delete token from database
@@ -95,8 +100,8 @@ class AuthEndpoints {
 
         $input = json_decode(file_get_contents('php://input'), true);
 
-        $currentPassword = $input['currentPassword'] ?? '';
-        $newPassword = $input['newPassword'] ?? '';
+        $currentPassword = isset($input['currentPassword']) ? $input['currentPassword'] : '';
+        $newPassword = isset($input['newPassword']) ? $input['newPassword'] : '';
 
         if (empty($currentPassword) || empty($newPassword)) {
             errorResponse('Current password and new password are required', 400);

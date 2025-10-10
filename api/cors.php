@@ -3,17 +3,14 @@
 // CORS Headers Handler
 // ====================================================
 
-// 1. Дефинирайте всички домейни, които имат право да достъпват API-то.
-const ALLOWED_ORIGINS = [
-    'https://nukgsz.com',      // Вашият производствен домейн
-    'http://localhost:5173'  // Вашият сървър за локална разработка
-];
+// Ensure shared configuration (including ALLOWED_ORIGINS) is loaded
+require_once __DIR__ . '/config.php';
 
 // Вземаме домейна, от който идва заявката
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
 
 // 2. Проверяваме дали идващият домейн е в нашия "бял списък".
-if (in_array($origin, ALLOWED_ORIGINS)) {
+if (defined('ALLOWED_ORIGINS') && in_array($origin, ALLOWED_ORIGINS, true)) {
     // Ако е в списъка, го разрешаваме изрично.
     header("Access-Control-Allow-Origin: $origin");
 }
