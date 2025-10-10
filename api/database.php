@@ -1,7 +1,5 @@
 <?php
-// ====================================================
-// Database Connection and Query Helper
-// ====================================================
+
 
 class Database {
     private static $instance = null;

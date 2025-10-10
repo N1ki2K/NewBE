@@ -3,7 +3,7 @@
 // Include necessary files
 require_once 'cors.php';
 require_once 'config.php';
-require_once 'database.php';
+// require_once 'database.php';
 require_once 'middleware.php';
 
 // Establish a database connection
