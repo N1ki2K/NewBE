@@ -11,6 +11,7 @@ export const LoginButton: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const texts = {
     bg: {
@@ -31,7 +32,8 @@ export const LoginButton: React.FC = () => {
       enterEditMode: 'Влез в режим на редактиране',
       exitEditMode: 'Излез от режим на редактиране',
       logoutFromCms: 'Излез от CMS',
-      dashboard: 'Табло'
+      dashboard: 'Табло',
+      serverError: 'Проблем при свързването със сървъра'
     },
     en: {
       login: 'Login',
@@ -51,7 +53,8 @@ export const LoginButton: React.FC = () => {
       enterEditMode: 'Enter Edit Mode',
       exitEditMode: 'Exit Edit Mode',
       logoutFromCms: 'Logout from CMS',
-      dashboard: 'Dashboard'
+      dashboard: 'Dashboard',
+      serverError: 'Problem connecting to the server'
     }
   };
 
@@ -61,15 +64,23 @@ export const LoginButton: React.FC = () => {
     e.preventDefault();
     setLoginError('');
     clearError();
-    
-    const success = await login(username, password);
-    if (success) {
-      setShowLoginModal(false);
-      setUsername('');
-      setPassword('');
-      setLoginError('');
-    } else {
-      setLoginError(error || t.invalidCredentials);
+    setIsAuthenticating(true);
+
+    try {
+      const success = await login(username, password);
+      if (success) {
+        setShowLoginModal(false);
+        setUsername('');
+        setPassword('');
+        setLoginError('');
+      } else {
+        setLoginError(error || t.invalidCredentials);
+      }
+    } catch (err) {
+      console.error('CMS login failed:', err);
+      setLoginError(t.serverError);
+    } finally {
+      setIsAuthenticating(false);
     }
   };
 
@@ -131,10 +142,10 @@ export const LoginButton: React.FC = () => {
                 <div className="flex gap-3 mb-4">
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={isLoading || isAuthenticating}
                     className="flex-1 bg-brand-blue text-white py-2 px-4 rounded hover:bg-brand-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLoading ? 'Loading...' : t.loginButton}
+                    {isLoading || isAuthenticating ? 'Loading...' : t.loginButton}
                   </button>
                   <button
                     type="button"
