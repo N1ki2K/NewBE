@@ -14,39 +14,30 @@ define('DB_USER', 'nukgszco_nukgszc');
 define('DB_PASS', 'hk~Gn-EG7f8J');
 define('DB_CHARSET', 'utf8mb4');
 
-if (!function_exists('normalize_public_path')) {
-    function normalize_public_path($path, $default = '') {
-        if ($path === false || $path === null) {
-            $path = $default;
-        }
-
-        $trimmed = trim((string)$path);
-
-        if ($trimmed === '' || $trimmed === '/') {
-            return '';
-        }
-
-        return '/' . trim($trimmed, '/');
-    }
-}
-
 $backendPublicEnv = getenv('BACKEND_PUBLIC_PATH');
 $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
 
-if ($backendPublicEnv !== false) {
-    $backendPublicPath = normalize_public_path($backendPublicEnv);
+if ($backendPublicEnv !== false && $backendPublicEnv !== '') {
+    $backendPublicPath = '/' . ltrim(trim($backendPublicEnv), '/');
 } elseif (!empty($scriptName)) {
     $scriptDir = rtrim(dirname($scriptName), '/\\');
-    $backendPublicPath = normalize_public_path(preg_replace('#/api$#', '', $scriptDir));
+    $cleanDir = preg_replace('#/api$#', '', $scriptDir);
+    $backendPublicPath = $cleanDir === '' ? '' : '/' . ltrim($cleanDir, '/');
 } else {
-    $backendPublicPath = normalize_public_path('/backend');
+    $backendPublicPath = '/backend';
 }
 
 define('BACKEND_PUBLIC_PATH', $backendPublicPath);
-define('UPLOAD_PUBLIC_BASE', normalize_public_path(BACKEND_PUBLIC_PATH . '/uploads', '/uploads'));
-define('UPLOAD_PICTURES_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/pictures', '/uploads/pictures'));
-define('UPLOAD_DOCUMENTS_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/documents', '/uploads/documents'));
-define('UPLOAD_PRESENTATIONS_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/presentations', '/uploads/presentations'));
+
+$uploadPublicBase = ($backendPublicPath === '' ? '' : $backendPublicPath) . '/uploads';
+$uploadPicturesPublicPath = $uploadPublicBase . '/pictures';
+$uploadDocumentsPublicPath = $uploadPublicBase . '/documents';
+$uploadPresentationsPublicPath = $uploadPublicBase . '/presentations';
+
+define('UPLOAD_PUBLIC_BASE', $uploadPublicBase);
+define('UPLOAD_PICTURES_PUBLIC_PATH', $uploadPicturesPublicPath);
+define('UPLOAD_DOCUMENTS_PUBLIC_PATH', $uploadDocumentsPublicPath);
+define('UPLOAD_PRESENTATIONS_PUBLIC_PATH', $uploadPresentationsPublicPath);
 
 // JWT Configuration
 define('JWT_SECRET', 'gramatikovkazacheshtedoidevofisavpetnajseineshtoanieoshtegochakamgevosemnaiseipolovina');
