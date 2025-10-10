@@ -75,6 +75,16 @@ switch ($primary) {
             $conn->close();
         }
         break;
+    case 'schoolstaff':
+        require_once 'endpoints/schoolstaff.php';
+        $schoolStaff = new SchoolStaffEndpoints();
+        $schoolStaff->handle($segments, $requestMethod);
+        break;
+    case 'images':
+        require_once 'endpoints/images.php';
+        $images = new ImagesEndpoints();
+        $images->handle($segments, $requestMethod);
+        break;
 
     default:
         http_response_code(404);
