@@ -12,7 +12,7 @@ define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'nukgszco_3ou_Cms');
 define('DB_USER', 'nukgszco_nukgszc');
 define('DB_PASS', 'hk~Gn-EG7f8J');
-define('DB_CHARSET', 'utf8mb3_general_ci');
+define('DB_CHARSET', 'utf8mb4');
 
 if (!class_exists('Database')) {
     class Database {

@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL,
   name VARCHAR(100),
   role ENUM('admin', 'user') DEFAULT 'user',
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_username (username),
