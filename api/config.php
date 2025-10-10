@@ -8,11 +8,11 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 // Database Configuration
-define('DB_HOST', 'localhost');
+define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'nukgszco_3ou_Cms');
 define('DB_USER', 'nukgszco_nukgszc');
 define('DB_PASS', 'hk~Gn-EG7f8J');
-define('DB_CHARSET', 'utf8mb4');
+define('DB_CHARSET', 'utf8mb3_general_ci');
 
 $backendPublicEnv = getenv('BACKEND_PUBLIC_PATH');
 $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
