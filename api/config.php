@@ -14,6 +14,40 @@ define('DB_USER', 'nukgszco_nukgszc');
 define('DB_PASS', 'hk~Gn-EG7f8J');
 define('DB_CHARSET', 'utf8mb4');
 
+if (!function_exists('normalize_public_path')) {
+    function normalize_public_path($path, $default = '') {
+        if ($path === false || $path === null) {
+            $path = $default;
+        }
+
+        $trimmed = trim((string)$path);
+
+        if ($trimmed === '' || $trimmed === '/') {
+            return '';
+        }
+
+        return '/' . trim($trimmed, '/');
+    }
+}
+
+$backendPublicEnv = getenv('BACKEND_PUBLIC_PATH');
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+
+if ($backendPublicEnv !== false) {
+    $backendPublicPath = normalize_public_path($backendPublicEnv);
+} elseif (!empty($scriptName)) {
+    $scriptDir = rtrim(dirname($scriptName), '/\\');
+    $backendPublicPath = normalize_public_path(preg_replace('#/api$#', '', $scriptDir));
+} else {
+    $backendPublicPath = normalize_public_path('/backend');
+}
+
+define('BACKEND_PUBLIC_PATH', $backendPublicPath);
+define('UPLOAD_PUBLIC_BASE', normalize_public_path(BACKEND_PUBLIC_PATH . '/uploads', '/uploads'));
+define('UPLOAD_PICTURES_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/pictures', '/uploads/pictures'));
+define('UPLOAD_DOCUMENTS_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/documents', '/uploads/documents'));
+define('UPLOAD_PRESENTATIONS_PUBLIC_PATH', normalize_public_path(UPLOAD_PUBLIC_BASE . '/presentations', '/uploads/presentations'));
+
 // JWT Configuration
 define('JWT_SECRET', 'gramatikovkazacheshtedoidevofisavpetnajseineshtoanieoshtegochakamgevosemnaiseipolovina');
 define('JWT_ALGORITHM', 'HS256');

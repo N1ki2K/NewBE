@@ -35,7 +35,7 @@ class UploadEndpoints {
         }
 
         // Generate URL (adjust to match your server structure)
-        $url = '/uploads/pictures/' . $filename;
+        $url = rtrim(UPLOAD_PICTURES_PUBLIC_PATH, '/') . '/' . $filename;
 
         // Save to media_files table
         $this->db->insert('media_files', [
@@ -69,7 +69,7 @@ class UploadEndpoints {
                 $filename = basename($file);
                 $images[] = [
                     'filename' => $filename,
-                    'url' => '/uploads/pictures/' . $filename,
+                    'url' => rtrim(UPLOAD_PICTURES_PUBLIC_PATH, '/') . '/' . $filename,
                     'size' => filesize($file),
                     'modified' => filemtime($file)
                 ];
@@ -127,7 +127,7 @@ class UploadEndpoints {
             errorResponse('Failed to upload document', 500);
         }
 
-        $url = '/uploads/documents/' . $filename;
+        $url = rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename;
 
         // Save to media_files table
         $this->db->insert('media_files', [
@@ -161,7 +161,7 @@ class UploadEndpoints {
                 $filename = basename($file);
                 $documents[] = [
                     'filename' => $filename,
-                    'url' => '/uploads/documents/' . $filename,
+                    'url' => rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename,
                     'size' => filesize($file),
                     'modified' => filemtime($file)
                 ];
@@ -217,7 +217,7 @@ class UploadEndpoints {
             errorResponse('Failed to upload presentation', 500);
         }
 
-        $url = '/uploads/presentations/' . $filename;
+        $url = rtrim(UPLOAD_PRESENTATIONS_PUBLIC_PATH, '/') . '/' . $filename;
 
         // Save to media_files table
         $this->db->insert('media_files', [
@@ -251,7 +251,7 @@ class UploadEndpoints {
                 $filename = basename($file);
                 $presentations[] = [
                     'filename' => $filename,
-                    'url' => '/uploads/presentations/' . $filename,
+                    'url' => rtrim(UPLOAD_PRESENTATIONS_PUBLIC_PATH, '/') . '/' . $filename,
                     'size' => filesize($file),
                     'modified' => filemtime($file)
                 ];
@@ -328,7 +328,7 @@ class UploadEndpoints {
             'id' => $attachmentId,
             'filename' => $filename,
             'originalName' => $file['name'],
-            'url' => '/uploads/documents/' . $filename,
+            'url' => rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename,
             'message' => 'Attachment uploaded successfully'
         ], 201);
     }

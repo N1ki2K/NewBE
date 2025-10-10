@@ -72,4 +72,8 @@ class AuthMiddleware {
 
         return $user;
     }
+
+    public static function check() {
+        return self::requireEditorOrAdmin();
+    }
 }
