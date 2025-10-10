@@ -75,6 +75,11 @@ switch ($primary) {
             $conn->close();
         }
         break;
+    case 'navigation':
+        require_once 'endpoints/navigation.php';
+        $navigation = new NavigationEndpoints();
+        $navigation->handle($segments, $requestMethod);
+        break;
     case 'schoolstaff':
         require_once 'endpoints/schoolstaff.php';
         $schoolStaff = new SchoolStaffEndpoints();

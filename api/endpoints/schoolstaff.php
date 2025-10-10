@@ -8,7 +8,7 @@ class SchoolStaffEndpoints {
         $this->db = Database::getInstance();
     }
 
-    public function handle(array $segments, string $method) {
+    public function handle($segments, $method) {
         $idSegment = isset($segments[1]) ? $segments[1] : '';
 
         if ($idSegment === '') {
@@ -36,7 +36,7 @@ class SchoolStaffEndpoints {
         $this->handleSingle($method, $id);
     }
 
-    private function handleCollection(string $method) {
+    private function handleCollection($method) {
         switch ($method) {
             case 'GET':
                 $this->listStaff();
@@ -50,25 +50,25 @@ class SchoolStaffEndpoints {
         }
     }
 
-    private function handleSingle(string $method, int $id) {
+    private function handleSingle($method, $id) {
         switch ($method) {
             case 'GET':
-                $this->getStaffMember($id);
+                $this->getStaffMember((int)$id);
                 break;
             case 'PUT':
                 AuthMiddleware::requireEditorOrAdmin();
-                $this->updateStaffMember($id);
+                $this->updateStaffMember((int)$id);
                 break;
             case 'DELETE':
                 AuthMiddleware::requireEditorOrAdmin();
-                $this->deleteStaffMember($id);
+                $this->deleteStaffMember((int)$id);
                 break;
             default:
                 errorResponse('Method not allowed', 405);
         }
     }
 
-    private function handleBulkPositions(string $method) {
+    private function handleBulkPositions($method) {
         if ($method !== 'PUT') {
             errorResponse('Method not allowed', 405);
         }
@@ -102,7 +102,7 @@ class SchoolStaffEndpoints {
         jsonResponse(['message' => 'Positions updated successfully']);
     }
 
-    private function handleImage(string $method, int $id) {
+    private function handleImage($method, $id) {
         if (!$this->columnExists('image_url') && !$this->columnExists('image_filename')) {
             errorResponse('Image support is not configured for school staff', 501);
         }
@@ -136,7 +136,7 @@ class SchoolStaffEndpoints {
         jsonResponse($result);
     }
 
-    private function getStaffMember(int $id) {
+    private function getStaffMember($id) {
         $row = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
 
         if (!$row) {
@@ -181,7 +181,7 @@ class SchoolStaffEndpoints {
         jsonResponse($this->mapRow($newRow), 201);
     }
 
-    private function updateStaffMember(int $id) {
+    private function updateStaffMember($id) {
         $existing = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
         if (!$existing) {
             errorResponse('Staff member not found', 404);
@@ -215,7 +215,7 @@ class SchoolStaffEndpoints {
         jsonResponse($this->mapRow($updated));
     }
 
-    private function deleteStaffMember(int $id) {
+    private function deleteStaffMember($id) {
         $deleted = $this->db->delete('school_staff', 'id = ?', array($id));
 
         if ($deleted === 0) {
@@ -225,7 +225,7 @@ class SchoolStaffEndpoints {
         jsonResponse(['message' => 'Staff member deleted successfully']);
     }
 
-    private function getStaffImage(int $id) {
+    private function getStaffImage($id) {
         $row = $this->db->fetchOne("SELECT * FROM school_staff WHERE id = ?", array($id));
         if (!$row) {
             errorResponse('Staff member not found', 404);
@@ -240,7 +240,7 @@ class SchoolStaffEndpoints {
         jsonResponse($image);
     }
 
-    private function setStaffImage(int $id) {
+    private function setStaffImage($id) {
         $row = $this->db->fetchOne("SELECT id FROM school_staff WHERE id = ?", array($id));
         if (!$row) {
             errorResponse('Staff member not found', 404);
@@ -264,7 +264,7 @@ class SchoolStaffEndpoints {
         jsonResponse(['message' => 'Image updated successfully']);
     }
 
-    private function deleteStaffImage(int $id) {
+    private function deleteStaffImage($id) {
         $row = $this->db->fetchOne("SELECT id FROM school_staff WHERE id = ?", array($id));
         if (!$row) {
             errorResponse('Staff member not found', 404);
@@ -286,7 +286,7 @@ class SchoolStaffEndpoints {
         jsonResponse(['message' => 'Image removed successfully']);
     }
 
-    private function mapRow(array $row) {
+    private function mapRow($row) {
         $orderColumn = $this->getOrderColumn();
         $positionValue = isset($row[$orderColumn]) ? (int)$row[$orderColumn] : 0;
 
@@ -307,7 +307,7 @@ class SchoolStaffEndpoints {
         );
     }
 
-    private function getOrderColumn(): string {
+    private function getOrderColumn() {
         if ($this->columnExists('sort_order')) {
             return 'sort_order';
         }
@@ -317,7 +317,7 @@ class SchoolStaffEndpoints {
         return 'id';
     }
 
-    private function getColumns(): array {
+    private function getColumns() {
         if ($this->columns === null) {
             $rows = $this->db->fetchAll("SHOW COLUMNS FROM school_staff");
             $this->columns = array_map(function($row) {
@@ -327,11 +327,11 @@ class SchoolStaffEndpoints {
         return $this->columns;
     }
 
-    private function columnExists(string $column): bool {
+    private function columnExists($column) {
         return in_array($column, $this->getColumns(), true);
     }
 
-    private function filterColumns(array $data, bool $skipNull = false): array {
+    private function filterColumns($data, $skipNull = false) {
         $columns = array_flip($this->getColumns());
         $filtered = array_intersect_key($data, $columns);
 

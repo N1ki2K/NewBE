@@ -7,7 +7,7 @@ class ImagesEndpoints {
         $this->db = Database::getInstance();
     }
 
-    public function handle(array $segments, string $method) {
+    public function handle($segments, $method) {
         $sub = isset($segments[1]) ? $segments[1] : '';
 
         if ($sub === '') {
@@ -24,7 +24,7 @@ class ImagesEndpoints {
         $this->handleSingle($method, $id);
     }
 
-    private function handleCollection(string $method) {
+    private function handleCollection($method) {
         switch ($method) {
             case 'GET':
                 $this->listImages();
@@ -34,7 +34,7 @@ class ImagesEndpoints {
         }
     }
 
-    private function handlePageImages(string $method, string $pageId) {
+    private function handlePageImages($method, $pageId) {
         if ($method !== 'GET') {
             errorResponse('Method not allowed', 405);
         }
@@ -51,7 +51,7 @@ class ImagesEndpoints {
         jsonResponse($result);
     }
 
-    private function handleSingle(string $method, string $id) {
+    private function handleSingle($method, $id) {
         switch ($method) {
             case 'GET':
                 $this->getImage($id);
@@ -82,7 +82,7 @@ class ImagesEndpoints {
         jsonResponse($result);
     }
 
-    private function getImage(string $id) {
+    private function getImage($id) {
         $row = $this->db->fetchOne("SELECT * FROM images WHERE id = ?", array($id));
         if (!$row) {
             errorResponse('Image not found', 404);
@@ -91,7 +91,7 @@ class ImagesEndpoints {
         jsonResponse($this->mapRow($row));
     }
 
-    private function createOrReplaceImage(string $id) {
+    private function createOrReplaceImage($id) {
         $input = json_decode(file_get_contents('php://input'), true);
         if (!is_array($input)) {
             errorResponse('Invalid payload', 400);
@@ -112,7 +112,7 @@ class ImagesEndpoints {
         jsonResponse($this->mapRow($row));
     }
 
-    private function updateImage(string $id) {
+    private function updateImage($id) {
         $existing = $this->db->fetchOne("SELECT * FROM images WHERE id = ?", array($id));
         if (!$existing) {
             errorResponse('Image not found', 404);
@@ -133,7 +133,7 @@ class ImagesEndpoints {
         jsonResponse($this->mapRow($row));
     }
 
-    private function deleteImage(string $id) {
+    private function deleteImage($id) {
         $deleted = $this->db->delete('images', 'id = ?', array($id));
         if ($deleted === 0) {
             errorResponse('Image not found', 404);
@@ -142,7 +142,7 @@ class ImagesEndpoints {
         jsonResponse(['message' => 'Image deleted successfully']);
     }
 
-    private function prepareData(array $input, bool $skipNull = false): array {
+    private function prepareData($input, $skipNull = false) {
         $data = array();
 
         if (array_key_exists('filename', $input)) {
@@ -173,7 +173,7 @@ class ImagesEndpoints {
         return $data;
     }
 
-    private function mapRow(array $row): array {
+    private function mapRow($row) {
         return array(
             'id' => $row['id'],
             'filename' => isset($row['filename']) ? $row['filename'] : null,
