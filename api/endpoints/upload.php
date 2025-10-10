@@ -22,7 +22,8 @@ class UploadEndpoints {
         $file = $_FILES['image'];
 
         // Validate file
-        $this->validateFile($file, ALLOWED_IMAGE_TYPES);
+        $types = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
+        $this->validateFile($file, $types);
 
         // Generate unique filename
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -115,7 +116,8 @@ class UploadEndpoints {
         $file = $_FILES['document'];
 
         // Validate file
-        $this->validateFile($file, ALLOWED_DOCUMENT_TYPES);
+        $types = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
+        $this->validateFile($file, $types);
 
         // Generate unique filename
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -205,7 +207,8 @@ class UploadEndpoints {
         $file = $_FILES['presentation'];
 
         // Validate file
-        $this->validateFile($file, ALLOWED_PRESENTATION_TYPES);
+        $types = function_exists('get_allowed_presentation_types') ? get_allowed_presentation_types() : array();
+        $this->validateFile($file, $types);
 
         // Generate unique filename
         $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -301,7 +304,9 @@ class UploadEndpoints {
         $file = $_FILES['file'];
 
         // Validate file (allow images and documents)
-        $allowedTypes = array_merge(ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES);
+        $imageTypes = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
+        $documentTypes = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
+        $allowedTypes = array_merge($imageTypes, $documentTypes);
         $this->validateFile($file, $allowedTypes);
 
         // Generate unique filename

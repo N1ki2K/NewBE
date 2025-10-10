@@ -44,13 +44,17 @@ define('JWT_SECRET', 'gramatikovkazacheshtedoidevofisavpetnajseineshtoanieoshteg
 define('JWT_ALGORITHM', 'HS256');
 define('JWT_EXPIRATION', 86400); // 24 hours in seconds
 
-// CORS Configuration
-define('ALLOWED_ORIGINS', [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://nukgsz.com',
-    'https://www.nukgsz.com'
-]);
+// CORS Configuration (compatibility for older PHP versions)
+if (!function_exists('get_allowed_origins')) {
+    function get_allowed_origins() {
+        return array(
+            'http://localhost:3000',
+            'http://localhost:5173',
+            'https://nukgsz.com',
+            'https://www.nukgsz.com'
+        );
+    }
+}
 
 // Upload Configuration
 define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
@@ -59,19 +63,33 @@ define('UPLOAD_DOCUMENTS_DIR', UPLOAD_DIR . 'documents/');
 define('UPLOAD_PRESENTATIONS_DIR', UPLOAD_DIR . 'presentations/');
 define('UPLOAD_MAX_SIZE', 10 * 1024 * 1024); // 10MB
 
-// Allowed file types
-define('ALLOWED_IMAGE_TYPES', ['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
-define('ALLOWED_DOCUMENT_TYPES', [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-]);
-define('ALLOWED_PRESENTATION_TYPES', [
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-]);
+// Allowed file types (compatibility helpers)
+if (!function_exists('get_allowed_image_types')) {
+    function get_allowed_image_types() {
+        return array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
+    }
+}
+
+if (!function_exists('get_allowed_document_types')) {
+    function get_allowed_document_types() {
+        return array(
+            'application/pdf',
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+    }
+}
+
+if (!function_exists('get_allowed_presentation_types')) {
+    function get_allowed_presentation_types() {
+        return array(
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        );
+    }
+}
 
 // API Configuration
 define('API_VERSION', 'v1');

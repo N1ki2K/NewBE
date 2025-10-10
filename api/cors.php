@@ -10,7 +10,8 @@ require_once __DIR__ . '/config.php';
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
 
 // 2. Проверяваме дали идващият домейн е в нашия "бял списък".
-if (defined('ALLOWED_ORIGINS') && in_array($origin, ALLOWED_ORIGINS, true)) {
+$allowedOrigins = function_exists('get_allowed_origins') ? get_allowed_origins() : array();
+if (in_array($origin, $allowedOrigins, true)) {
     // Ако е в списъка, го разрешаваме изрично.
     header("Access-Control-Allow-Origin: $origin");
 }
