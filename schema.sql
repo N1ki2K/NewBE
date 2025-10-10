@@ -2,8 +2,8 @@
 -- Compatible with MySQL/MariaDB
 
 -- Create database (if not exists)
-CREATE DATABASE IF NOT EXISTS school_cms DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE school_cms;
+CREATE DATABASE IF NOT EXISTS nukgszco_3ou_Cms DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE nukgszco_3ou_Cms;
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -121,10 +121,10 @@ CREATE TABLE IF NOT EXISTS staff (
   phone VARCHAR(50),
   image_url VARCHAR(500),
   is_director BOOLEAN DEFAULT FALSE,
-  position INT DEFAULT 0,
+  sort_order INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_position (position),
+  INDEX idx_sort_order (sort_order),
   INDEX idx_is_director (is_director)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -136,10 +136,10 @@ CREATE TABLE IF NOT EXISTS school_staff (
   department VARCHAR(100),
   email VARCHAR(100),
   phone VARCHAR(50),
-  position INT DEFAULT 0,
+  sort_order INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_position (position),
+  INDEX idx_sort_order (sort_order),
   INDEX idx_department (department)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -192,7 +192,7 @@ VALUES
 ON DUPLICATE KEY UPDATE id=id;
 
 -- Sample staff
-INSERT INTO staff (name, position, bio, email, is_director, position)
+INSERT INTO staff (name, position, bio, email, is_director, sort_order)
 VALUES
   ('Иван Иванов', 'Директор', 'Биография на директора...', 'director@school.com', TRUE, 0),
   ('Мария Петрова', 'Заместник директор', 'Биография на заместник директора...', 'deputy@school.com', FALSE, 1)
