@@ -73,6 +73,12 @@ switch ($primary) {
         $patron->handle(array_slice($segments, 1), $requestMethod);
         break;
 
+    case 'history':
+        require_once 'endpoints/history.php';
+        $history = new HistoryEndpoints();
+        $history->handle(array_slice($segments, 1), $requestMethod);
+        break;
+
     case 'events':
     case 'staff':
     case 'pages':
