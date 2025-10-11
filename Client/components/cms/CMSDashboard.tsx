@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { apiService, ApiError } from '../../src/services/api';
+import { apiService } from '../../src/services/api';
 import { getApiBaseUrl, getApiEndpointBase } from '../../src/utils/apiBaseUrl';
 import ContactManagerTab from './ContactManagerTab';
 import InfoAccessManagerTab from './InfoAccessManagerTab';
@@ -109,8 +109,10 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, curren
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
             {filteredImages.map((image) => {
+              const imageUrl = `${apiBaseUrl}${image.url}`;
+              const isSelected = currentImage === imageUrl || currentImage === image.url;
+              
               const previewUrl = resolveUrl(image.url);
-              const isSelected = currentImage === previewUrl || currentImage === image.url;
               return (
                 <div 
                   key={image.filename} 
@@ -129,7 +131,9 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, curren
                       }}
                     />
                   </div>
-                  {/* Hide filename to emphasize thumbnail-only view */}
+                  <p className="text-xs font-medium text-gray-700 truncate" title={image.filename}>
+                    {image.filename}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {formatFileSize(image.size)}
                   </p>
@@ -274,10 +278,6 @@ const HistoryPageTab: React.FC = () => {
         const valueToSave = content[field];
         
         if (field === 'history-main-image') {
-          if (!apiService.isAuthenticated()) {
-            alert('Please log in to the CMS before saving the image.');
-            return;
-          }
           // Handle image using the images API
           const urlParts = (valueToSave as string).split('/');
           const filename = urlParts[urlParts.length - 1] || 'history-image.jpg';
@@ -302,13 +302,9 @@ const HistoryPageTab: React.FC = () => {
         }
         
         alert(`${field} saved successfully!`);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Failed to save content:', error);
-        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-          alert('Authorization required. Please log in to the CMS and try again.');
-        } else {
-          alert('Failed to save content. Please try again.');
-        }
+        alert('Failed to save content. Please try again.');
       }
     };
   
@@ -519,7 +515,6 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={content['history-main-image']}
             onClose={() => setShowImagePicker(false)}
-            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -696,10 +691,6 @@ const HistoryPageTab: React.FC = () => {
   
     const handleTeamPhotoSelect = async (imageUrl: string, filename: string) => {
       try {
-        if (!apiService.isAuthenticated()) {
-          alert('Please log in to the CMS before saving the team photo.');
-          return;
-        }
         // Save the team group photo using the image mapping system
         await apiService.setImageMapping('team-group-photo', {
           filename: filename,
@@ -715,11 +706,7 @@ const HistoryPageTab: React.FC = () => {
         alert(t.cms.schoolTeam.teamPhoto.photoUpdated);
       } catch (error: any) {
         console.error('❌ Failed to save team photo:', error);
-        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-          alert('Authorization required. Please log in to the CMS and try again.');
-        } else {
-          alert(`Failed to save team photo: ${error.message || 'Please try again.'}`);
-        }
+        alert(`Failed to save team photo: ${error.message || 'Please try again.'}`);
       }
       setShowTeamPhotoManager(false);
     };
@@ -805,7 +792,7 @@ const HistoryPageTab: React.FC = () => {
               <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                 {staffImages[member.id] ? (
                   <img 
-                    src={resolveMediaUrl(staffImages[member.id].image_url)}
+                    src={`${apiBaseUrl}${staffImages[member.id].image_url}`}
                     alt={staffImages[member.id].alt_text || member.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -902,7 +889,7 @@ const HistoryPageTab: React.FC = () => {
                     <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
                       {staffImages[editingMember.id] ? (
                         <img 
-                          src={resolveMediaUrl(staffImages[editingMember.id].image_url)}
+                          src={`${apiBaseUrl}${staffImages[editingMember.id].image_url}`}
                           alt="Preview" 
                           className="w-full h-full object-cover"
                         />
@@ -1079,17 +1066,15 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleTeamPhotoSelect}
             currentImage={teamGroupPhoto}
             onClose={() => setShowTeamPhotoManager(false)}
-            resolveUrl={resolveMediaUrl}
           />
         )}
-
+  
         {/* Image Picker Modal */}
         {showImagePicker && (
           <ImagePicker
             onImageSelect={handleImageSelect}
             currentImage={staffImages[editingMember?.id]?.image_url}
             onClose={() => setShowImagePicker(false)}
-            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -1646,7 +1631,9 @@ const HistoryPageTab: React.FC = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    {/* Hide filename to emphasize thumbnail-only view */}
+                    <p className="text-xs font-medium text-gray-700 truncate" title={image.filename}>
+                      {image.filename}
+                    </p>
                     <p className="text-xs text-gray-500">
                       {formatFileSize(image.size)}
                     </p>
@@ -2588,7 +2575,7 @@ const HistoryPageTab: React.FC = () => {
                       {formData.featured_image_url && (
                         <div className="flex items-center space-x-2">
                           <img
-                            src={resolveMediaUrl(formData.featured_image_url)}
+                            src={`${apiBaseUrl}${formData.featured_image_url}`}
                             alt="Featured"
                             className="w-16 h-16 object-cover rounded"
                           />
@@ -2739,7 +2726,6 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={formData.featured_image_url}
             onClose={() => setShowImagePicker(false)}
-            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -3172,7 +3158,6 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={editingImage?.url}
             onClose={() => setShowImagePicker(false)}
-            resolveUrl={resolveMediaUrl}
           />
         )}
   

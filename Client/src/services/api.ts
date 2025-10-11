@@ -24,14 +24,8 @@ class ApiService {
       ...options.headers,
     };
 
-    // Always re-hydrate token from storage to stay in sync with login state
-    const storedToken = localStorage.getItem('cms_token');
-    if (!this.token && storedToken) {
-      this.token = storedToken;
-    }
-    const effectiveToken = this.token || storedToken;
-    if (effectiveToken) {
-      headers.Authorization = `Bearer ${effectiveToken}`;
+    if (this.token) {
+      headers.Authorization = `Bearer ${this.token}`;
     }
 
     try {
@@ -49,8 +43,9 @@ class ApiService {
       return data;
     } catch (error) {
       if (error instanceof ApiError) {
-        // Do not auto-clear token on 401/403 to avoid logging out users
-        // due to transient backend header propagation issues
+        if (error.status === 401 || error.status === 403) {
+          this.clearToken();
+        }
         throw error;
       }
       // For network errors or backend unavailable, throw descriptive error
@@ -762,7 +757,7 @@ class ApiService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!(this.token || localStorage.getItem('cms_token'));
+    return !!this.token;
   }
 
   // Check if error is a backend connection issue

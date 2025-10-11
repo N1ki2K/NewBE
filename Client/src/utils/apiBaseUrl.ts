@@ -4,18 +4,10 @@ const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, '');
 const stripApiSuffix = (url: string): string =>
   url.replace(/\/api$/i, '');
 
-const matchProtocol = (url: string): string => {
-  if (typeof window !== 'undefined' && window.location) {
-    const currentProtocol = window.location.protocol;
-    return url.replace(/^https?:/, currentProtocol);
-  }
-  return url;
-};
-
 export const getApiBaseUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL; //
+  const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl && typeof envUrl === 'string') {
-    return matchProtocol(stripApiSuffix(normalizeBaseUrl(envUrl)));
+    return stripApiSuffix(normalizeBaseUrl(envUrl));
   }
 
   if (typeof window !== 'undefined' && window.location) {

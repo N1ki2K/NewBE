@@ -1,14 +1,5 @@
 RewriteEngine On
 
-# Ensure Authorization header is passed to PHP
-RewriteCond %{HTTP:Authorization} .
-RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
-
-# Also forward it as a real header if mod_headers is available
-<IfModule mod_headers.c>
-  RequestHeader set Authorization "%{HTTP_AUTHORIZATION}e"
-</IfModule>
-
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 

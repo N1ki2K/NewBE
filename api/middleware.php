@@ -7,41 +7,14 @@ require_once __DIR__ . '/jwt.php';
 
 class AuthMiddleware {
 
-    private static function getAuthorizationHeader() {
-        $authHeader = '';
-        // Try native getallheaders first
-        if (function_exists('getallheaders')) {
-            $headers = getallheaders();
-            if (isset($headers['Authorization'])) {
-                $authHeader = $headers['Authorization'];
-            } elseif (isset($headers['authorization'])) {
-                $authHeader = $headers['authorization'];
-            }
-            if (!empty($authHeader)) {
-                return $authHeader;
-            }
-        }
-
-        // Fallbacks for environments where Authorization is not included in getallheaders
-        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
-        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-            $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
-        }
-
-        // Final fallback: environment variables
-        if (empty($authHeader)) {
-            $env = getenv('HTTP_AUTHORIZATION');
-            if ($env) {
-                $authHeader = $env;
-            }
-        }
-
-        return $authHeader;
-    }
-
     public static function authenticate() {
-        $authHeader = self::getAuthorizationHeader();
+        $headers = getallheaders();
+        $authHeader = '';
+        if (isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+        } elseif (isset($headers['authorization'])) {
+            $authHeader = $headers['authorization'];
+        }
 
         if (empty($authHeader)) {
             errorResponse('Authorization header missing', 401);
