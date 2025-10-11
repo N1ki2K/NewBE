@@ -24,8 +24,14 @@ class ApiService {
       ...options.headers,
     };
 
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`;
+    // Always re-hydrate token from storage to stay in sync with login state
+    const storedToken = localStorage.getItem('cms_token');
+    if (!this.token && storedToken) {
+      this.token = storedToken;
+    }
+    const effectiveToken = this.token || storedToken;
+    if (effectiveToken) {
+      headers.Authorization = `Bearer ${effectiveToken}`;
     }
 
     try {
@@ -757,7 +763,7 @@ class ApiService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!this.token;
+    return !!(this.token || localStorage.getItem('cms_token'));
   }
 
   // Check if error is a backend connection issue
