@@ -129,9 +129,12 @@ class ApiService {
       content_value: typeof section.content === 'string'
         ? section.content
         : JSON.stringify(section.content),
+      page_id: section.page_id ?? null,
+      label: section.label ?? section.id,
+      type: section.type ?? 'text',
     };
 
-    return this.request('/content?action=save', {
+    return this.request('/content', {
       method: 'POST',
       body: JSON.stringify(payload),
     });
