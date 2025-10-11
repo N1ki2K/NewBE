@@ -132,12 +132,12 @@ const PatronPage: React.FC = () => {
             <div className="lg:w-1/3">
               <figure className="sticky top-8">
                 <img 
-                  src={imageContent.image_url || 'https://picsum.photos/400/500?random=11'}
+                  src={imageContent.image_url || '/public/uplods/hardcode/Kolio_Ganchev.jpg'}
                   alt={imageCaptionContent?.content || t.patronPage.imageAlt}
                   className="w-full h-auto rounded-lg shadow-md"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://picsum.photos/400/500?random=11';
-                  }}
+                  // onError={(e) => {
+                  //   (e.target as HTMLImageElement).src = 'https://picsum.photos/400/500?random=11';
+                  // }}
                 />
                 {imageCaptionContent && (
                   <figcaption className="text-center text-sm text-gray-500 mt-2">
