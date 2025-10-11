@@ -99,15 +99,31 @@ class ImagesEndpoints {
         }
 
         $data = $this->prepareData($input);
-        $data['id'] = $id;
 
-        $existing = $this->db->fetchOne("SELECT id FROM images WHERE id = ?", array($id));
-
-        if ($existing) {
-            $this->db->update('images', $data, 'id = :id', array('id' => $id));
-        } else {
-            $this->db->insert('images', $data);
+        if (empty($data)) {
+            errorResponse('No valid image fields supplied', 400);
         }
+
+        $columns = array_keys($data);
+        $params = $data;
+        $params['id'] = $id;
+
+        $insertColumns = array_merge(['id'], $columns);
+        $insertPlaceholders = array_map(function($col) {
+            return ':' . $col;
+        }, $insertColumns);
+
+        $updateAssignments = array();
+        foreach ($columns as $col) {
+            $updateAssignments[] = "$col = VALUES($col)";
+        }
+
+        $sql = "INSERT INTO images (" . implode(', ', $insertColumns) . ") VALUES (" . implode(', ', $insertPlaceholders) . ")";
+        if (!empty($updateAssignments)) {
+            $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updateAssignments);
+        }
+
+        $this->db->query($sql, $params);
 
         $row = $this->db->fetchOne("SELECT * FROM images WHERE id = ?", array($id));
         jsonResponse($this->mapRow($row));
