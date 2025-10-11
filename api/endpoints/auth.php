@@ -6,6 +6,7 @@
 class AuthEndpoints {
 
     private $db;
+    private $userColumns = null;
 
     public function __construct() {
         $this->db = Database::getInstance();
@@ -60,12 +61,14 @@ class AuthEndpoints {
         ]);
 
         // Update last login
-        $this->db->update(
-            'users',
-            ['last_login' => date('Y-m-d H:i:s')],
-            'id = :user_id',
-            ['user_id' => $user['id']]
-        );
+        if ($this->userColumnExists('last_login')) {
+            $this->db->update(
+                'users',
+                ['last_login' => date('Y-m-d H:i:s')],
+                'id = :user_id',
+                ['user_id' => $user['id']]
+            );
+        }
 
         // Remove password from response
         unset($user['password']);
@@ -138,5 +141,16 @@ class AuthEndpoints {
         );
 
         jsonResponse(['message' => 'Password changed successfully']);
+    }
+
+    private function userColumnExists($column) {
+        if ($this->userColumns === null) {
+            $columns = $this->db->fetchAll("SHOW COLUMNS FROM users");
+            $this->userColumns = array_map(function($row) {
+                return isset($row['Field']) ? $row['Field'] : null;
+            }, $columns);
+        }
+
+        return in_array($column, $this->userColumns, true);
     }
 }
