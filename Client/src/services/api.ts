@@ -826,15 +826,17 @@ class ApiService {
   // ============== ACHIEVEMENTS API ==============
 
   async getAchievements() {
-    return this.request<any[]>('/achievements', {
+    const response = await this.request<{ success: boolean; achievements: any[] }>('/achievements', {
       method: 'GET',
     });
+    return response.achievements || [];
   }
 
   async getAchievement(id: number) {
-    return this.request<any>(`/achievements/${id}`, {
+    const response = await this.request<{ success: boolean; achievement: any }>(`/achievements/${id}`, {
       method: 'GET',
     });
+    return response.achievement;
   }
 
   async createAchievement(data: {
@@ -843,10 +845,11 @@ class ApiService {
     year?: number;
     position?: number;
   }) {
-    return this.request<any>('/achievements', {
+    const response = await this.request<{ success: boolean; achievement: any }>('/achievements', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return response.achievement;
   }
 
   async updateAchievement(id: number, data: {
@@ -856,20 +859,21 @@ class ApiService {
     position?: number;
     is_active?: boolean;
   }) {
-    return this.request<any>(`/achievements/${id}`, {
+    const response = await this.request<{ success: boolean; achievement: any }>(`/achievements/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    return response.achievement;
   }
 
   async deleteAchievement(id: number) {
-    return this.request<any>(`/achievements/${id}`, {
+    return this.request(`/achievements/${id}`, {
       method: 'DELETE',
     });
   }
 
   async updateAchievementPositions(achievements: Array<{ id: number; position: number }>) {
-    return this.request<any>('/achievements/bulk/positions', {
+    return this.request('/achievements/reorder', {
       method: 'PUT',
       body: JSON.stringify({ achievements }),
     });
@@ -878,15 +882,17 @@ class ApiService {
   // ============== DIRECTORS API ==============
 
   async getDirectors() {
-    return this.request<any[]>('/directors', {
+    const response = await this.request<{ success: boolean; directors: any[] }>('/directors', {
       method: 'GET',
     });
+    return response.directors || [];
   }
 
   async getDirector(id: number) {
-    return this.request<any>(`/directors/${id}`, {
+    const response = await this.request<{ success: boolean; director: any }>(`/directors/${id}`, {
       method: 'GET',
     });
+    return response.director;
   }
 
   async createDirector(data: {
@@ -896,10 +902,11 @@ class ApiService {
     description?: string;
     position?: number;
   }) {
-    return this.request<any>('/directors', {
+    const response = await this.request<{ success: boolean; director: any }>('/directors', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return response.director;
   }
 
   async updateDirector(id: number, data: {
@@ -910,20 +917,21 @@ class ApiService {
     position?: number;
     is_active?: boolean;
   }) {
-    return this.request<any>(`/directors/${id}`, {
+    const response = await this.request<{ success: boolean; director: any }>(`/directors/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
+    return response.director;
   }
 
   async deleteDirector(id: number) {
-    return this.request<any>(`/directors/${id}`, {
+    return this.request(`/directors/${id}`, {
       method: 'DELETE',
     });
   }
 
   async updateDirectorPositions(directors: Array<{ id: number; position: number }>) {
-    return this.request<any>('/directors/bulk/positions', {
+    return this.request('/directors/reorder', {
       method: 'PUT',
       body: JSON.stringify({ directors }),
     });
