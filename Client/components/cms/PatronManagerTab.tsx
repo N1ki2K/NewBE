@@ -98,9 +98,7 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
                       }}
                     />
                   </div>
-                  <p className="text-xs text-gray-600 truncate font-medium" title={image.filename}>
-                    {image.filename}
-                  </p>
+                  {/* Hide filename to emphasize thumbnail-only view */}
                   <p className="text-xs text-gray-500">
                     {formatFileSize(image.size)}
                   </p>

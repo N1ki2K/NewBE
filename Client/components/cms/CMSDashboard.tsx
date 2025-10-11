@@ -129,9 +129,7 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, curren
                       }}
                     />
                   </div>
-                  <p className="text-xs font-medium text-gray-700 truncate" title={image.filename}>
-                    {image.filename}
-                  </p>
+                  {/* Hide filename to emphasize thumbnail-only view */}
                   <p className="text-xs text-gray-500">
                     {formatFileSize(image.size)}
                   </p>
@@ -1632,9 +1630,7 @@ const HistoryPageTab: React.FC = () => {
                   </div>
                   
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-700 truncate" title={image.filename}>
-                      {image.filename}
-                    </p>
+                    {/* Hide filename to emphasize thumbnail-only view */}
                     <p className="text-xs text-gray-500">
                       {formatFileSize(image.size)}
                     </p>
