@@ -384,7 +384,7 @@ export const bg = {
   systemError: {
     title: 'Грешка при зареждане на съдържанието',
     message: 'Не може да се свърже със сървъра.',
-    messageAction: 'Платете си Хостинга.',
+    messageAction: '',
     tryAgain: 'Опитай отново',
     retrying: 'Опитва се отново...',
     helpTitle: 'Какво можете да направите?',

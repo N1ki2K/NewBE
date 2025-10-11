@@ -14,7 +14,6 @@ import DocumentsMenuManagerTab from './DocumentsMenuManagerTab';
 import ProjectsMenuManagerTab from './ProjectsMenuManagerTab';
 import AchievementsDirectorsManager from './AchievementsDirectorsManager';
 import useHealthCheck from '../../src/hooks/useHealthCheck'; // CORRECTED PATH
-import SystemUnavailable from '../SystemUnavailable';
 
 // Reusable Image Picker Component for selecting from Pictures folder
 interface ImagePickerProps {
@@ -3305,17 +3304,6 @@ const HistoryPageTab: React.FC = () => {
       );
     }
   
-    // Show error page if backend is not available
-    if (!isHealthy) {
-      return (
-        <SystemUnavailable
-          onRetry={retry}
-          isRetrying={isLoading}
-          error={error}
-        />
-      );
-    }
-  
     if (!isLoggedIn) {
       return (
         <div className="max-w-4xl mx-auto p-6">
@@ -3337,8 +3325,27 @@ const HistoryPageTab: React.FC = () => {
       }));
     };
   
+    const healthWarning = (!isHealthy && error) ? (
+      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-semibold text-yellow-800">Внимание: липсва връзка със сървъра.</p>
+            <p className="text-yellow-700 text-sm mt-1">{String(error)}</p>
+          </div>
+          <button
+            onClick={retry}
+            className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Опитва се...' : 'Опитай отново'}
+          </button>
+        </div>
+      </div>
+    ) : null;
+
     return (
       <div className="max-w-6xl mx-auto p-6">
+        {healthWarning}
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">{t.cms.dashboard.title}</h1>

@@ -50,7 +50,7 @@ const fallbackTranslations = {
     systemError: {
       title: 'Грешка при зареждане на съдържанието',
       message: 'Не може да се свърже със сървъра.',
-      messageAction: 'Платете си Хостинга.',
+      messageAction: '',
       tryAgain: 'Опитай отново',
       retrying: 'Опитва се отново...',
       helpTitle: 'Какво можете да направите?',
@@ -474,7 +474,7 @@ const fallbackTranslations = {
       systemError: {
         title: 'Грешка при зареждане на съдържанието',
         message: 'Не може да се свърже със сървъра.',
-        messageAction: 'Платете си Хостинга.',
+        messageAction: '',
         tryAgain: 'Опитай отново',
         retrying: 'Опитва се отново...',
         helpTitle: 'Какво можете да направите?',
@@ -549,7 +549,7 @@ const fallbackTranslations = {
     systemError: {
       title: 'Error Loading Content',
       message: 'Unable to connect to server.',
-      messageAction: 'Pay your Hosting.',
+      messageAction: '',
       tryAgain: 'Try Again',
       retrying: 'Retrying...',
       helpTitle: 'What can you do?',
