@@ -49,9 +49,8 @@ class ApiService {
       return data;
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.status === 401 || error.status === 403) {
-          this.clearToken();
-        }
+        // Do not auto-clear token on 401/403 to avoid logging out users
+        // due to transient backend header propagation issues
         throw error;
       }
       // For network errors or backend unavailable, throw descriptive error

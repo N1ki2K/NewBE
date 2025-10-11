@@ -29,6 +29,14 @@ class AuthMiddleware {
             $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
 
+        // Final fallback: environment variables
+        if (empty($authHeader)) {
+            $env = getenv('HTTP_AUTHORIZATION');
+            if ($env) {
+                $authHeader = $env;
+            }
+        }
+
         return $authHeader;
     }
 
