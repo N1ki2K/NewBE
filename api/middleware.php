@@ -20,6 +20,10 @@ class AuthMiddleware {
             $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
 
+        if (empty($authHeader) && isset($_COOKIE['cms_token'])) {
+            $authHeader = 'Bearer ' . $_COOKIE['cms_token'];
+        }
+
         if (empty($authHeader)) {
             errorResponse('Authorization header missing', 401);
         }
