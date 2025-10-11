@@ -51,16 +51,16 @@ const HistoryPage: React.FC = () => {
         console.log('👨‍💼 Directors loaded:', directorsData);
 
         // Use mock data as fallback if API returns empty data
-        const finalAchievements = achievementsData && achievementsData.length > 0
-          ? achievementsData
-          : getAchievementsInLanguage(locale === 'bg' ? 'bg' : 'en');
+        // const finalAchievements = achievementsData && achievementsData.length > 0
+        //   ? achievementsData
+        //   : getAchievementsInLanguage(locale === 'bg' ? 'bg' : 'en');
 
-        const finalDirectors = directorsData && directorsData.length > 0
-          ? directorsData
-          : getDirectorsInLanguage(locale === 'bg' ? 'bg' : 'en');
+        // const finalDirectors = directorsData && directorsData.length > 0
+        //   ? directorsData
+        //   : getDirectorsInLanguage(locale === 'bg' ? 'bg' : 'en');
 
-        setAchievements(finalAchievements);
-        setDirectors(finalDirectors);
+        // setAchievements(finalAchievements);
+        // setDirectors(finalDirectors);
       } catch (error) {
         console.error('💥 Error loading history data:', error);
         // Use mock data on error

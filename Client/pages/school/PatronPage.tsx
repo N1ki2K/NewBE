@@ -32,9 +32,9 @@ const PatronPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to load patron content:', err);
       // Use mock data as fallback
-      const mockData = getMockPatronContent(locale);
-      setPatronContent(mockData.content);
-      setError(null); // Clear error since we have fallback data
+      // const mockData = getMockPatronContent(locale);
+      // setPatronContent(mockData.content);
+      // setError(null); // Clear error since we have fallback data
     } finally {
       setIsLoading(false);
     }
