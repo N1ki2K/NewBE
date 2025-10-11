@@ -171,7 +171,7 @@ if (!function_exists('get_allowed_origins')) {
 }
 
 // Upload Configuration
-define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/');
+define('UPLOAD_DIR', dirname(__DIR__) . '/public/uploads/');
 define('UPLOAD_PICTURES_DIR', UPLOAD_DIR . 'pictures/');
 define('UPLOAD_DOCUMENTS_DIR', UPLOAD_DIR . 'documents/');
 define('UPLOAD_PRESENTATIONS_DIR', UPLOAD_DIR . 'presentations/');
