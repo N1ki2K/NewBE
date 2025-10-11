@@ -20,11 +20,6 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
-    // Schedule navigation after rendering is complete
-    setTimeout(() => {
-      window.location.href = '/404';
-    }, 0);
   }
 
   render() {

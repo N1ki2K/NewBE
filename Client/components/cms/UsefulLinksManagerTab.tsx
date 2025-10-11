@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService, ApiError } from '../../src/services/api';
 
@@ -34,7 +33,6 @@ interface UsefulLinksContent {
 
 const UsefulLinksManagerTab: React.FC = () => {
   const { t, locale } = useLanguage();
-  const navigate = useNavigate();
   const [links, setLinks] = useState<UsefulLink[]>([]);
   const [content, setContent] = useState<UsefulLinksContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,7 +49,7 @@ const UsefulLinksManagerTab: React.FC = () => {
 
   useEffect(() => {
     loadUsefulLinksContent();
-  }, [navigate]);
+  }, []);
 
   const loadUsefulLinksContent = async () => {
     try {
@@ -65,9 +63,7 @@ const UsefulLinksManagerTab: React.FC = () => {
       
       // Check if this is a backend connection error
       if (err instanceof ApiError && err.status === 0) {
-        console.log('Backend connection error detected in CMS, redirecting to 404');
-        navigate('/404', { replace: true });
-        return;
+        console.log('Backend connection error detected in CMS, but staying on page.');
       }
       
       if (err instanceof Error) {
@@ -141,9 +137,7 @@ const UsefulLinksManagerTab: React.FC = () => {
       
       // Check if this is a backend connection error
       if (err instanceof ApiError && err.status === 0) {
-        console.log('Backend connection error during save, redirecting to 404');
-        navigate('/404', { replace: true });
-        return;
+        console.log('Backend connection error during save, but staying on page.');
       }
       
       alert(t.cms.usefulLinksManager.errorLoad);
