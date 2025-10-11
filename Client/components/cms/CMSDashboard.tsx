@@ -519,6 +519,7 @@ const HistoryPageTab: React.FC = () => {
     const [showTeamPhotoManager, setShowTeamPhotoManager] = useState(false);
     const [teamGroupPhoto, setTeamGroupPhoto] = useState<string | null>(null);
     const { confirm } = useConfirm();
+    const apiBaseUrl = getApiBaseUrl();
   
     useEffect(() => {
       const staff = getSchoolStaff();
@@ -1424,6 +1425,7 @@ const HistoryPageTab: React.FC = () => {
     const [isLoadingImages, setIsLoadingImages] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
     const { confirm } = useConfirm();
+    const apiBaseUrl = getApiBaseUrl();
   
     // Load images from Pictures folder
     useEffect(() => {
