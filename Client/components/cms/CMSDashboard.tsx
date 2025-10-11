@@ -513,6 +513,7 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={content['history-main-image']}
             onClose={() => setShowImagePicker(false)}
+            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -1064,15 +1065,17 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleTeamPhotoSelect}
             currentImage={teamGroupPhoto}
             onClose={() => setShowTeamPhotoManager(false)}
+            resolveUrl={resolveMediaUrl}
           />
         )}
-  
+
         {/* Image Picker Modal */}
         {showImagePicker && (
           <ImagePicker
             onImageSelect={handleImageSelect}
             currentImage={staffImages[editingMember?.id]?.image_url}
             onClose={() => setShowImagePicker(false)}
+            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -2724,6 +2727,7 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={formData.featured_image_url}
             onClose={() => setShowImagePicker(false)}
+            resolveUrl={resolveMediaUrl}
           />
         )}
       </div>
@@ -3156,6 +3160,7 @@ const HistoryPageTab: React.FC = () => {
             onImageSelect={handleImageSelect}
             currentImage={editingImage?.url}
             onClose={() => setShowImagePicker(false)}
+            resolveUrl={resolveMediaUrl}
           />
         )}
   
