@@ -62,6 +62,11 @@ switch ($primary) {
         break;
 
     case 'news':
+        require_once 'endpoints/news.php';
+        $news = new NewsEndpoints();
+        $news->handle(array_slice($segments, 1), $requestMethod);
+        break;
+
     case 'events':
     case 'staff':
     case 'patron':
