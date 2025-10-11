@@ -27,46 +27,75 @@ case 'save': // This action handles both creating and updating
             break;
         }
 
-        if (isset($data['content_key']) && isset($data['content_value'])) {
-            $key = $conn->real_escape_string($data['content_key']);
-            $value = $conn->real_escape_string($data['content_value']);
-            // Use INSERT ... ON DUPLICATE KEY UPDATE for a single, efficient query
-            $sql = "INSERT INTO content (content_key, content_value) VALUES ('$key', '$value') ON DUPLICATE KEY UPDATE content_value = VALUES(content_value)";
-            if ($conn->query($sql) === TRUE) {
-                echo json_encode(['message' => 'Content saved successfully']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => 'Error saving content: ' . $conn->error]);
+        $columns = [];
+        if ($result = $conn->query("SHOW COLUMNS FROM content")) {
+            while ($row = $result->fetch_assoc()) {
+                $columns[$row['Field']] = true;
             }
+            $result->free();
+        }
+
+        $keyColumn = isset($columns['content_key']) ? 'content_key' : (isset($columns['id']) ? 'id' : null);
+        $valueColumn = isset($columns['content_value']) ? 'content_value' : (isset($columns['content']) ? 'content' : null);
+        $pageColumn = isset($columns['page_id']) ? 'page_id' : null;
+        $labelColumn = isset($columns['label']) ? 'label' : null;
+        $typeColumn = isset($columns['type']) ? 'type' : null;
+
+        if ($keyColumn === null || $valueColumn === null) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Content table schema not supported']);
             break;
         }
 
-        if (isset($data['id']) && isset($data['content'])) {
-            $key = $conn->real_escape_string($data['id']);
-            $valueRaw = $data['content'];
-            $value = $conn->real_escape_string(is_array($valueRaw) ? json_encode($valueRaw) : (string) $valueRaw);
-            $pageId = isset($data['page_id']) ? $conn->real_escape_string($data['page_id']) : null;
-            $label = isset($data['label']) ? $conn->real_escape_string($data['label']) : $key;
-            $type = isset($data['type']) ? $conn->real_escape_string($data['type']) : 'text';
+        $providedKey = $data['content_key'] ?? $data['id'] ?? null;
+        $providedValue = $data['content_value'] ?? $data['content'] ?? null;
 
-            $sql = "INSERT INTO content (content_key, content_value, page_id, label, type)
-                    VALUES ('$key', '$value', " . ($pageId ? "'$pageId'" : "NULL") . ", '$label', '$type')
-                    ON DUPLICATE KEY UPDATE
-                        content_value = VALUES(content_value),
-                        page_id = VALUES(page_id),
-                        label = VALUES(label),
-                        type = VALUES(type)";
-            if ($conn->query($sql) === TRUE) {
-                echo json_encode(['message' => 'Content saved successfully']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => 'Error saving content: ' . $conn->error]);
-            }
+        if ($providedKey === null || $providedValue === null) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing content key or value']);
             break;
         }
 
-        http_response_code(400);
-        echo json_encode(['error' => 'Missing content_key/content_value or id/content in payload']);
+        $keyValue = $conn->real_escape_string((string) $providedKey);
+        $valueRaw = $providedValue;
+        $valueEscaped = $conn->real_escape_string(is_array($valueRaw) ? json_encode($valueRaw) : (string) $valueRaw);
+
+        $fields = [$keyColumn, $valueColumn];
+        $values = ["'$keyValue'", "'$valueEscaped'"];
+        $updates = ["$valueColumn = VALUES($valueColumn)"];
+
+        if ($pageColumn !== null) {
+            $pageValue = $data['page_id'] ?? null;
+            $fields[] = $pageColumn;
+            $values[] = $pageValue !== null ? "'" . $conn->real_escape_string((string) $pageValue) . "'" : "NULL";
+            $updates[] = "$pageColumn = VALUES($pageColumn)";
+        }
+
+        if ($labelColumn !== null) {
+            $labelValue = $data['label'] ?? $providedKey;
+            $fields[] = $labelColumn;
+            $values[] = "'" . $conn->real_escape_string((string) $labelValue) . "'";
+            $updates[] = "$labelColumn = VALUES($labelColumn)";
+        }
+
+        if ($typeColumn !== null) {
+            $typeValue = $data['type'] ?? 'text';
+            $fields[] = $typeColumn;
+            $values[] = "'" . $conn->real_escape_string((string) $typeValue) . "'";
+            $updates[] = "$typeColumn = VALUES($typeColumn)";
+        }
+
+        $sql = "INSERT INTO content (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ")";
+        if (!empty($updates)) {
+            $sql .= " ON DUPLICATE KEY UPDATE " . implode(', ', $updates);
+        }
+
+        if ($conn->query($sql) === TRUE) {
+            echo json_encode(['message' => 'Content saved successfully']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error saving content: ' . $conn->error]);
+        }
         break;
 
     case 'delete':
