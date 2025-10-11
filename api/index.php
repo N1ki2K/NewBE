@@ -79,6 +79,18 @@ switch ($primary) {
         $history->handle(array_slice($segments, 1), $requestMethod);
         break;
 
+    case 'achievements':
+        require_once 'endpoints/achievements.php';
+        $achievements = new AchievementsEndpoints();
+        $achievements->handle(array_slice($segments, 1), $requestMethod);
+        break;
+
+    case 'directors':
+        require_once 'endpoints/directors.php';
+        $directors = new DirectorsEndpoints();
+        $directors->handle(array_slice($segments, 1), $requestMethod);
+        break;
+
     case 'events':
     case 'staff':
     case 'pages':
