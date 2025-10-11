@@ -6,54 +6,104 @@
 class UploadEndpoints {
 
     private $db;
+    private static $mediaTableChecked = false;
 
     public function __construct() {
         $this->db = Database::getInstance();
     }
 
+    private function ensureUploadEnvironment() {
+        if (!is_dir(UPLOAD_DIR)) {
+            @mkdir(UPLOAD_DIR, 0755, true);
+        }
+        if (!is_dir(UPLOAD_PICTURES_DIR)) {
+            @mkdir(UPLOAD_PICTURES_DIR, 0755, true);
+        }
+        if (!is_dir(UPLOAD_DOCUMENTS_DIR)) {
+            @mkdir(UPLOAD_DOCUMENTS_DIR, 0755, true);
+        }
+        if (!is_dir(UPLOAD_PRESENTATIONS_DIR)) {
+            @mkdir(UPLOAD_PRESENTATIONS_DIR, 0755, true);
+        }
+
+        if (!self::$mediaTableChecked) {
+            self::$mediaTableChecked = true;
+            try {
+                $this->db->fetchOne("SHOW TABLES LIKE 'media_files'");
+            } catch (Exception $e) {
+                try {
+                    $this->db->query("CREATE TABLE IF NOT EXISTS media_files (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        filename VARCHAR(255) NOT NULL,
+                        original_name VARCHAR(255) NOT NULL,
+                        file_path VARCHAR(500) NOT NULL,
+                        file_type ENUM('image', 'document', 'presentation') NOT NULL,
+                        mime_type VARCHAR(100),
+                        file_size INT,
+                        alt_text VARCHAR(255),
+                        uploaded_by INT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        INDEX idx_file_type (file_type),
+                        INDEX idx_filename (filename)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+                } catch (Exception $inner) {
+                    error_log('Failed to create media_files table: ' . $inner->getMessage());
+                    throw new Exception('Media storage table missing and could not be created.');
+                }
+            }
+        }
+    }
+
     // POST /api/upload/image
     public function uploadImage() {
-        if (!isset($_FILES['image'])) {
-            errorResponse('No image file provided', 400);
+        try {
+            $this->ensureUploadEnvironment();
+
+            if (!isset($_FILES['image'])) {
+                errorResponse('No image file provided', 400);
+            }
+
+            $file = $_FILES['image'];
+
+            // Validate file
+            $types = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
+            $this->validateFile($file, $types);
+
+            // Generate unique filename
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '_' . time() . '.' . $extension;
+            $targetPath = UPLOAD_PICTURES_DIR . $filename;
+
+            // Move file
+            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+                errorResponse('Failed to upload file', 500);
+            }
+
+            // Generate URL (adjust to match your server structure)
+            $url = rtrim(UPLOAD_PICTURES_PUBLIC_PATH, '/') . '/' . $filename;
+
+            // Save to media_files table
+            $this->db->insert('media_files', [
+                'filename' => $filename,
+                'original_name' => $file['name'],
+                'file_path' => $targetPath,
+                'file_type' => 'image',
+                'mime_type' => $file['type'],
+                'file_size' => $file['size'],
+                'uploaded_by' => null
+            ]);
+
+            jsonResponse([
+                'url' => $url,
+                'filename' => $filename,
+                'originalName' => $file['name'],
+                'size' => $file['size'],
+                'message' => 'Image uploaded successfully'
+            ]);
+        } catch (Exception $e) {
+            error_log('Image upload failed: ' . $e->getMessage());
+            errorResponse('Image upload failed: ' . $e->getMessage(), 500);
         }
-
-        $file = $_FILES['image'];
-
-        // Validate file
-        $types = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
-        $this->validateFile($file, $types);
-
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '_' . time() . '.' . $extension;
-        $targetPath = UPLOAD_PICTURES_DIR . $filename;
-
-        // Move file
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-            errorResponse('Failed to upload file', 500);
-        }
-
-        // Generate URL (adjust to match your server structure)
-        $url = rtrim(UPLOAD_PICTURES_PUBLIC_PATH, '/') . '/' . $filename;
-
-        // Save to media_files table
-        $this->db->insert('media_files', [
-            'filename' => $filename,
-            'original_name' => $file['name'],
-            'file_path' => $targetPath,
-            'file_type' => 'image',
-            'mime_type' => $file['type'],
-            'file_size' => $file['size'],
-            'uploaded_by' => null
-        ]);
-
-        jsonResponse([
-            'url' => $url,
-            'filename' => $filename,
-            'originalName' => $file['name'],
-            'size' => $file['size'],
-            'message' => 'Image uploaded successfully'
-        ]);
     }
 
     // GET /api/upload/pictures
