@@ -33,18 +33,12 @@ class AuthEndpoints {
         }
 
         $storedPassword = isset($user['password']) ? $user['password'] : '';
-        $authenticated = false;
-
-        if ($storedPassword !== '') {
-            if (password_verify($password, $storedPassword)) {
-                $authenticated = true;
-            } elseif ($storedPassword === $password) {
-                // Allow plain-text match (for temporary testing environments)
-                $authenticated = true;
-            }
+        if ($storedPassword === '') {
+            errorResponse('Invalid credentials', 401);
         }
 
-        if (!$authenticated) {
+        // Compare passwords directly in plain text (no hashing)
+        if ($storedPassword !== $password) {
             errorResponse('Invalid credentials', 401);
         }
 
