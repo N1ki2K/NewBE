@@ -15,7 +15,7 @@ const HeroSection: React.FC = () => {
       <div className="absolute inset-0">
         <EditableImage 
           id="hero-background"
-          defaultSrc="https://picsum.photos/1600/900?random=1"
+          defaultSrc="/public/uplods/hardcode/team.jpg"
           alt={getTranslation('homePage.hero.alt', 'School building')}
           className="w-full h-full object-cover"
         />

@@ -132,7 +132,7 @@ const PatronPage: React.FC = () => {
             <div className="lg:w-1/3">
               <figure className="sticky top-8">
                 <img 
-                  src={imageContent.image_url || '/public/uplods/hardcode/Kolio_Ganchev.jpg'}
+                  src={imageContent.image_url || '/public/uploads/hardcode/Kolio_Ganchev.jpg'}
                   alt={imageCaptionContent?.content || t.patronPage.imageAlt}
                   className="w-full h-auto rounded-lg shadow-md"
                   // onError={(e) => {
