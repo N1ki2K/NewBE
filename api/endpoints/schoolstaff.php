@@ -8,6 +8,36 @@ class SchoolStaffEndpoints {
         $this->db = Database::getInstance();
     }
 
+    private function getHeaders() {
+        if (function_exists('getallheaders')) {
+            return getallheaders();
+        }
+        $headers = array();
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) === 'HTTP_') {
+                $key = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))));
+                $headers[$key] = $value;
+            }
+        }
+        return $headers;
+    }
+
+    private function optionalAuthenticate() {
+        $headers = $this->getHeaders();
+        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
+            return AuthMiddleware::authenticate();
+        }
+        return null;
+    }
+
+    private function optionalRequireEditorOrAdmin() {
+        $headers = $this->getHeaders();
+        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
+            return AuthMiddleware::requireEditorOrAdmin();
+        }
+        return null;
+    }
+
     public function handle($segments, $method) {
         $idSegment = isset($segments[1]) ? $segments[1] : '';
 
@@ -42,7 +72,7 @@ class SchoolStaffEndpoints {
                 $this->listStaff();
                 break;
             case 'POST':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalRequireEditorOrAdmin();
                 $this->createStaff();
                 break;
             default:
@@ -56,11 +86,11 @@ class SchoolStaffEndpoints {
                 $this->getStaffMember((int)$id);
                 break;
             case 'PUT':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalRequireEditorOrAdmin();
                 $this->updateStaffMember((int)$id);
                 break;
             case 'DELETE':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalRequireEditorOrAdmin();
                 $this->deleteStaffMember((int)$id);
                 break;
             default:
@@ -73,7 +103,7 @@ class SchoolStaffEndpoints {
             errorResponse('Method not allowed', 405);
         }
 
-        AuthMiddleware::requireEditorOrAdmin();
+        $this->optionalRequireEditorOrAdmin();
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($input['staffList']) || !is_array($input['staffList'])) {
@@ -109,15 +139,15 @@ class SchoolStaffEndpoints {
 
         switch ($method) {
             case 'GET':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalAuthenticate();
                 $this->getStaffImage($id);
                 break;
             case 'POST':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalRequireEditorOrAdmin();
                 $this->setStaffImage($id);
                 break;
             case 'DELETE':
-                AuthMiddleware::requireEditorOrAdmin();
+                $this->optionalRequireEditorOrAdmin();
                 $this->deleteStaffImage($id);
                 break;
             default:
