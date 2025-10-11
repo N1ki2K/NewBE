@@ -253,7 +253,7 @@ const TeamPage: React.FC = () => {
           <div className="relative overflow-hidden rounded-2xl shadow-xl bg-white p-2">
             <EditableImage
               id="team-group-photo"
-              defaultSrc="https://picsum.photos/1200/600?random=100"
+              defaultSrc="/public/uploads/hardcode/team.jpg"
               alt={t.teamPage.photoCaption}
               className="w-full max-w-5xl mx-auto rounded-xl"
             />
