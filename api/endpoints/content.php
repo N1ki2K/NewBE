@@ -91,6 +91,7 @@ case 'save': // This action handles both creating and updating
         }
 
         if ($conn->query($sql) === TRUE) {
+            sync_history_section($conn, $keyValue, $valueRaw);
             echo json_encode(['message' => 'Content saved successfully']);
         } else {
             http_response_code(500);
@@ -128,5 +129,60 @@ case 'save': // This action handles both creating and updating
         header('Content-Type: application/json');
         echo json_encode($content);
         break;
+}
+
+function sync_history_section(mysqli $conn, string $key, $value): void {
+    if (!preg_match('/^(history-[^_]+(?:-[^_]+)*)_(bg|en)$/i', $key, $matches)) {
+        return;
+    }
+
+    $sectionKey = $matches[1];
+    $language = strtolower($matches[2]);
+    $column = $language === 'en' ? 'content_en' : 'content_bg';
+    $titleColumn = $language === 'en' ? 'title_en' : 'title_bg';
+
+    $contentValue = is_array($value) ? json_encode($value) : (string) $value;
+    $contentValue = $conn->real_escape_string($contentValue);
+
+    $stmt = $conn->prepare("SELECT id FROM history_sections WHERE section_key = ?");
+    if (!$stmt) {
+        return;
+    }
+    $stmt->bind_param('s', $sectionKey);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $exists = $result && $result->num_rows > 0;
+    $stmt->close();
+
+    if ($exists) {
+        $sql = "UPDATE history_sections SET $column = ?, updated_at = NOW() WHERE section_key = ?";
+        $update = $conn->prepare($sql);
+        if ($update) {
+            $update->bind_param('ss', $contentValue, $sectionKey);
+            $update->execute();
+            $update->close();
+        }
+    } else {
+        $position = determine_history_next_position($conn);
+        $sql = "INSERT INTO history_sections (section_key, $column, $titleColumn, position, is_active)
+                VALUES (?, ?, ?, ?, 1)";
+        $insert = $conn->prepare($sql);
+        if ($insert) {
+            $titleValue = $sectionKey;
+            $insert->bind_param('sssi', $sectionKey, $contentValue, $titleValue, $position);
+            $insert->execute();
+            $insert->close();
+        }
+    }
+}
+
+function determine_history_next_position(mysqli $conn): int {
+    $result = $conn->query("SELECT MAX(position) AS max_position FROM history_sections");
+    if (!$result) {
+        return 1;
+    }
+    $row = $result->fetch_assoc();
+    $result->free();
+    return $row && $row['max_position'] !== null ? ((int) $row['max_position']) + 1 : 1;
 }
 ?>
