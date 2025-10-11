@@ -45,7 +45,6 @@ class ApiService {
       if (error instanceof ApiError) {
         if (error.status === 401 || error.status === 403) {
           this.clearToken();
-          window.location.href = '/';
         }
         throw error;
       }
