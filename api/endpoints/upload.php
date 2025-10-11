@@ -151,46 +151,53 @@ class UploadEndpoints {
 
     // POST /api/upload/document
     public function uploadDocument() {
-        if (!isset($_FILES['document'])) {
-            errorResponse('No document file provided', 400);
+        try {
+            $this->ensureUploadEnvironment();
+
+            if (!isset($_FILES['document'])) {
+                errorResponse('No document file provided', 400);
+            }
+
+            $file = $_FILES['document'];
+
+            // Validate file
+            $types = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
+            $this->validateFile($file, $types);
+
+            // Generate unique filename
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '_' . time() . '.' . $extension;
+            $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
+
+            // Move file
+            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+                errorResponse('Failed to upload document', 500);
+            }
+
+            $url = rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename;
+
+            // Save to media_files table
+            $this->db->insert('media_files', [
+                'filename' => $filename,
+                'original_name' => $file['name'],
+                'file_path' => $targetPath,
+                'file_type' => 'document',
+                'mime_type' => $file['type'],
+                'file_size' => $file['size'],
+                'uploaded_by' => null
+            ]);
+
+            jsonResponse([
+                'url' => $url,
+                'filename' => $filename,
+                'originalName' => $file['name'],
+                'size' => $file['size'],
+                'message' => 'Document uploaded successfully'
+            ]);
+        } catch (Exception $e) {
+            error_log('Document upload failed: ' . $e->getMessage());
+            errorResponse('Document upload failed: ' . $e->getMessage(), 500);
         }
-
-        $file = $_FILES['document'];
-
-        // Validate file
-        $types = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
-        $this->validateFile($file, $types);
-
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '_' . time() . '.' . $extension;
-        $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
-
-        // Move file
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-            errorResponse('Failed to upload document', 500);
-        }
-
-        $url = rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename;
-
-        // Save to media_files table
-        $this->db->insert('media_files', [
-            'filename' => $filename,
-            'original_name' => $file['name'],
-            'file_path' => $targetPath,
-            'file_type' => 'document',
-            'mime_type' => $file['type'],
-            'file_size' => $file['size'],
-            'uploaded_by' => null
-        ]);
-
-        jsonResponse([
-            'url' => $url,
-            'filename' => $filename,
-            'originalName' => $file['name'],
-            'size' => $file['size'],
-            'message' => 'Document uploaded successfully'
-        ]);
     }
 
     // GET /api/upload/documents
@@ -236,46 +243,53 @@ class UploadEndpoints {
 
     // POST /api/upload/presentation
     public function uploadPresentation() {
-        if (!isset($_FILES['presentation'])) {
-            errorResponse('No presentation file provided', 400);
+        try {
+            $this->ensureUploadEnvironment();
+
+            if (!isset($_FILES['presentation'])) {
+                errorResponse('No presentation file provided', 400);
+            }
+
+            $file = $_FILES['presentation'];
+
+            // Validate file
+            $types = function_exists('get_allowed_presentation_types') ? get_allowed_presentation_types() : array();
+            $this->validateFile($file, $types);
+
+            // Generate unique filename
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = uniqid() . '_' . time() . '.' . $extension;
+            $targetPath = UPLOAD_PRESENTATIONS_DIR . $filename;
+
+            // Move file
+            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+                errorResponse('Failed to upload presentation', 500);
+            }
+
+            $url = rtrim(UPLOAD_PRESENTATIONS_PUBLIC_PATH, '/') . '/' . $filename;
+
+            // Save to media_files table
+            $this->db->insert('media_files', [
+                'filename' => $filename,
+                'original_name' => $file['name'],
+                'file_path' => $targetPath,
+                'file_type' => 'presentation',
+                'mime_type' => $file['type'],
+                'file_size' => $file['size'],
+                'uploaded_by' => null
+            ]);
+
+            jsonResponse([
+                'url' => $url,
+                'filename' => $filename,
+                'originalName' => $file['name'],
+                'size' => $file['size'],
+                'message' => 'Presentation uploaded successfully'
+            ]);
+        } catch (Exception $e) {
+            error_log('Presentation upload failed: ' . $e->getMessage());
+            errorResponse('Presentation upload failed: ' . $e->getMessage(), 500);
         }
-
-        $file = $_FILES['presentation'];
-
-        // Validate file
-        $types = function_exists('get_allowed_presentation_types') ? get_allowed_presentation_types() : array();
-        $this->validateFile($file, $types);
-
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = uniqid() . '_' . time() . '.' . $extension;
-        $targetPath = UPLOAD_PRESENTATIONS_DIR . $filename;
-
-        // Move file
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-            errorResponse('Failed to upload presentation', 500);
-        }
-
-        $url = rtrim(UPLOAD_PRESENTATIONS_PUBLIC_PATH, '/') . '/' . $filename;
-
-        // Save to media_files table
-        $this->db->insert('media_files', [
-            'filename' => $filename,
-            'original_name' => $file['name'],
-            'file_path' => $targetPath,
-            'file_type' => 'presentation',
-            'mime_type' => $file['type'],
-            'file_size' => $file['size'],
-            'uploaded_by' => null
-        ]);
-
-        jsonResponse([
-            'url' => $url,
-            'filename' => $filename,
-            'originalName' => $file['name'],
-            'size' => $file['size'],
-            'message' => 'Presentation uploaded successfully'
-        ]);
     }
 
     // GET /api/upload/presentations
@@ -321,51 +335,58 @@ class UploadEndpoints {
 
     // POST /api/news/:newsId/attachments
     public function uploadNewsAttachment($newsId) {
-        if (!isset($_FILES['file'])) {
-            errorResponse('No file provided', 400);
+        try {
+            $this->ensureUploadEnvironment();
+
+            if (!isset($_FILES['file'])) {
+                errorResponse('No file provided', 400);
+            }
+
+            // Verify news article exists
+            $news = $this->db->fetchOne("SELECT id FROM news WHERE id = ?", [$newsId]);
+            if (!$news) {
+                errorResponse('News article not found', 404);
+            }
+
+            $file = $_FILES['file'];
+
+            // Validate file (allow images and documents)
+            $imageTypes = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
+            $documentTypes = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
+            $allowedTypes = array_merge($imageTypes, $documentTypes);
+            $this->validateFile($file, $allowedTypes);
+
+            // Generate unique filename
+            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = 'news_' . $newsId . '_' . uniqid() . '.' . $extension;
+            $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
+
+            // Move file
+            if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+                errorResponse('Failed to upload file', 500);
+            }
+
+            // Save to news_attachments table
+            $attachmentId = $this->db->insert('news_attachments', [
+                'news_id' => $newsId,
+                'filename' => $filename,
+                'original_name' => $file['name'],
+                'file_path' => $targetPath,
+                'file_type' => $file['type'],
+                'file_size' => $file['size']
+            ]);
+
+            jsonResponse([
+                'id' => $attachmentId,
+                'filename' => $filename,
+                'originalName' => $file['name'],
+                'url' => rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename,
+                'message' => 'Attachment uploaded successfully'
+            ], 201);
+        } catch (Exception $e) {
+            error_log('News attachment upload failed: ' . $e->getMessage());
+            errorResponse('Attachment upload failed: ' . $e->getMessage(), 500);
         }
-
-        // Verify news article exists
-        $news = $this->db->fetchOne("SELECT id FROM news WHERE id = ?", [$newsId]);
-        if (!$news) {
-            errorResponse('News article not found', 404);
-        }
-
-        $file = $_FILES['file'];
-
-        // Validate file (allow images and documents)
-        $imageTypes = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
-        $documentTypes = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
-        $allowedTypes = array_merge($imageTypes, $documentTypes);
-        $this->validateFile($file, $allowedTypes);
-
-        // Generate unique filename
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $filename = 'news_' . $newsId . '_' . uniqid() . '.' . $extension;
-        $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
-
-        // Move file
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-            errorResponse('Failed to upload file', 500);
-        }
-
-        // Save to news_attachments table
-        $attachmentId = $this->db->insert('news_attachments', [
-            'news_id' => $newsId,
-            'filename' => $filename,
-            'original_name' => $file['name'],
-            'file_path' => $targetPath,
-            'file_type' => $file['type'],
-            'file_size' => $file['size']
-        ]);
-
-        jsonResponse([
-            'id' => $attachmentId,
-            'filename' => $filename,
-            'originalName' => $file['name'],
-            'url' => rtrim(UPLOAD_DOCUMENTS_PUBLIC_PATH, '/') . '/' . $filename,
-            'message' => 'Attachment uploaded successfully'
-        ], 201);
     }
 
     // Helper method to validate uploaded files
