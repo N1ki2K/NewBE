@@ -90,6 +90,11 @@ switch ($primary) {
         $schoolStaff = new SchoolStaffEndpoints();
         $schoolStaff->handle($segments, $requestMethod);
         break;
+    case 'gallery':
+        require_once 'endpoints/gallery.php';
+        $gallery = new GalleryEndpoints();
+        $gallery->handle($segments, $requestMethod);
+        break;
     case 'images':
         require_once 'endpoints/images.php';
         $images = new ImagesEndpoints();
