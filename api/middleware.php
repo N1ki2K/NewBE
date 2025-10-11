@@ -8,12 +8,16 @@ require_once __DIR__ . '/jwt.php';
 class AuthMiddleware {
 
     public static function authenticate() {
-        $headers = getallheaders();
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
         $authHeader = '';
         if (isset($headers['Authorization'])) {
             $authHeader = $headers['Authorization'];
         } elseif (isset($headers['authorization'])) {
             $authHeader = $headers['authorization'];
+        } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
 
         if (empty($authHeader)) {
