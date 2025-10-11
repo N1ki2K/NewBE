@@ -90,6 +90,38 @@ switch ($primary) {
         $images = new ImagesEndpoints();
         $images->handle($segments, $requestMethod);
         break;
+    case 'upload':
+        require_once 'endpoints/upload.php';
+        $upload = new UploadEndpoints();
+        $target = isset($segments[1]) ? $segments[1] : '';
+        $extra = isset($segments[2]) ? $segments[2] : '';
+        $extraDecoded = $extra !== '' ? urldecode($extra) : '';
+
+        if ($target === 'image' && $requestMethod === 'POST') {
+            $upload->uploadImage();
+        } elseif ($target === 'pictures' && $requestMethod === 'GET') {
+            $upload->getPicturesImages();
+        } elseif ($target === 'pictures' && $requestMethod === 'DELETE' && $extraDecoded !== '') {
+            $upload->deletePictureImage($extraDecoded);
+        } elseif ($target === 'document' && $requestMethod === 'POST') {
+            $upload->uploadDocument();
+        } elseif ($target === 'documents' && $requestMethod === 'GET') {
+            $upload->getDocuments();
+        } elseif ($target === 'documents' && $requestMethod === 'DELETE' && $extraDecoded !== '') {
+            $upload->deleteDocument($extraDecoded);
+        } elseif ($target === 'presentation' && $requestMethod === 'POST') {
+            $upload->uploadPresentation();
+        } elseif ($target === 'presentations' && $requestMethod === 'GET') {
+            $upload->getPresentations();
+        } elseif ($target === 'presentations' && $requestMethod === 'DELETE' && $extraDecoded !== '') {
+            $upload->deletePresentation($extraDecoded);
+        } elseif ($target === 'news' && isset($segments[2]) && isset($segments[3]) && $segments[3] === 'attachments' && $requestMethod === 'POST') {
+            $newsId = $segments[2];
+            $upload->uploadNewsAttachment($newsId);
+        } else {
+            errorResponse('Not Found', 404);
+        }
+        break;
 
     default:
         http_response_code(404);
