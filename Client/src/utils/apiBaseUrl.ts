@@ -13,7 +13,7 @@ const matchProtocol = (url: string): string => {
 };
 
 export const getApiBaseUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL; //
   if (envUrl && typeof envUrl === 'string') {
     return matchProtocol(stripApiSuffix(normalizeBaseUrl(envUrl)));
   }
