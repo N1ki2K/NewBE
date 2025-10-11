@@ -127,10 +127,44 @@ export const CMSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       
       const sectionsMap: Record<string, EditableSection> = {};
       sections.forEach((section: any) => {
-        console.log('⚙️ Processing section:', section.id, 'Content:', section.content);
-        sectionsMap[section.id] = {
-          ...section,
-          content: typeof section.content === 'string' ? section.content : JSON.stringify(section.content),
+        const sectionId = section.id
+          || section.content_key
+          || section.contentKey
+          || section.section_id
+          || section.sectionId
+          || null;
+
+        if (!sectionId) {
+          console.warn('⚠️ Skipping content section without ID/key:', section);
+          return;
+        }
+
+        const rawContent =
+          section.content !== undefined
+            ? section.content
+            : (section.content_value !== undefined
+                ? section.content_value
+                : section.value);
+
+        let parsedContent: any = rawContent;
+        if (typeof rawContent === 'string') {
+          const trimmed = rawContent.trim();
+          if ((trimmed.startsWith('[') && trimmed.endsWith(']')) || (trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+            try {
+              parsedContent = JSON.parse(trimmed);
+            } catch (parseError) {
+              parsedContent = rawContent;
+            }
+          }
+        }
+
+        console.log('⚙️ Processing section:', sectionId, 'Content:', parsedContent);
+        sectionsMap[sectionId] = {
+          id: sectionId,
+          type: section.type ?? section.content_type ?? 'text',
+          label: section.label ?? sectionId,
+          content: parsedContent,
+          page_id: section.page_id ?? null,
         };
       });
       console.log('✅ Final sections map:', sectionsMap);

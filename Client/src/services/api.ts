@@ -123,10 +123,17 @@ class ApiService {
     return this.request<any>(`/content/${id}`);
   }
 
-  async saveContentSection(section: any) {
-    return this.request('/content', {
+  async saveContentSection(section: { id: string; content: any }) {
+    const payload = {
+      content_key: section.id,
+      content_value: typeof section.content === 'string'
+        ? section.content
+        : JSON.stringify(section.content),
+    };
+
+    return this.request('/content?action=save', {
       method: 'POST',
-      body: JSON.stringify(section),
+      body: JSON.stringify(payload),
     });
   }
 
