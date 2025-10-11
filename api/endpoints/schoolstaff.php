@@ -133,10 +133,6 @@ class SchoolStaffEndpoints {
     }
 
     private function handleImage($method, $id) {
-        if (!$this->columnExists('image_url') && !$this->columnExists('image_filename')) {
-            errorResponse('Image support is not configured for school staff', 501);
-        }
-
         switch ($method) {
             case 'GET':
                 $this->optionalAuthenticate();
@@ -261,13 +257,41 @@ class SchoolStaffEndpoints {
             errorResponse('Staff member not found', 404);
         }
 
-        $image = array(
-            'image_filename' => isset($row['image_filename']) ? $row['image_filename'] : null,
-            'image_url' => isset($row['image_url']) ? $row['image_url'] : null,
-            'alt_text' => isset($row['image_alt_text']) ? $row['image_alt_text'] : (isset($row['alt_text']) ? $row['alt_text'] : null)
-        );
+        if ($this->columnExists('image_filename') || $this->columnExists('image_url')) {
+            $image = array(
+                'image_filename' => isset($row['image_filename']) ? $row['image_filename'] : null,
+                'image_url' => isset($row['image_url']) ? $row['image_url'] : null,
+                'alt_text' => isset($row['image_alt_text']) ? $row['image_alt_text'] : (isset($row['alt_text']) ? $row['alt_text'] : null)
+            );
 
-        jsonResponse($image);
+            jsonResponse($image);
+            return;
+        }
+
+        if ($this->hasStaffImagesTable()) {
+            $imageRow = $this->db->fetchOne(
+                "SELECT image_filename, image_url, alt_text FROM staff_images WHERE staff_id = ?",
+                array($id)
+            );
+
+            if (!$imageRow) {
+                jsonResponse(array(
+                    'image_filename' => null,
+                    'image_url' => null,
+                    'alt_text' => null
+                ));
+                return;
+            }
+
+            jsonResponse(array(
+                'image_filename' => $imageRow['image_filename'],
+                'image_url' => $imageRow['image_url'],
+                'alt_text' => $imageRow['alt_text']
+            ));
+            return;
+        }
+
+        errorResponse('Image support is not configured for school staff', 501);
     }
 
     private function setStaffImage($id) {
@@ -278,20 +302,52 @@ class SchoolStaffEndpoints {
 
         $input = json_decode(file_get_contents('php://input'), true);
 
-        $data = array(
-            'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
-            'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
-            'image_alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null
-        );
+        if ($this->columnExists('image_filename') || $this->columnExists('image_url')) {
+            $data = array(
+                'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
+                'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
+                'image_alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null
+            );
 
-        $filtered = $this->filterColumns($data, true);
+            $filtered = $this->filterColumns($data, true);
 
-        if (empty($filtered)) {
-            errorResponse('Image columns not available in schema', 500);
+            if (empty($filtered)) {
+                errorResponse('Image columns not available in schema', 500);
+            }
+
+            $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
+            jsonResponse(['message' => 'Image updated successfully']);
+            return;
         }
 
-        $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
-        jsonResponse(['message' => 'Image updated successfully']);
+        if ($this->hasStaffImagesTable()) {
+            $data = array(
+                'staff_id' => $id,
+                'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
+                'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
+                'alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null
+            );
+
+            if ($data['image_filename'] === null && $data['image_url'] === null) {
+                errorResponse('Image data is required', 400);
+            }
+
+            $this->db->query(
+                "INSERT INTO staff_images (staff_id, image_filename, image_url, alt_text, created_at, updated_at)
+                 VALUES (:staff_id, :image_filename, :image_url, :alt_text, NOW(), NOW())
+                 ON DUPLICATE KEY UPDATE
+                    image_filename = VALUES(image_filename),
+                    image_url = VALUES(image_url),
+                    alt_text = VALUES(alt_text),
+                    updated_at = NOW()",
+                $data
+            );
+
+            jsonResponse(['message' => 'Image updated successfully']);
+            return;
+        }
+
+        errorResponse('Image support is not configured for school staff', 501);
     }
 
     private function deleteStaffImage($id) {
@@ -300,20 +356,31 @@ class SchoolStaffEndpoints {
             errorResponse('Staff member not found', 404);
         }
 
-        $data = array(
-            'image_filename' => null,
-            'image_url' => null,
-            'image_alt_text' => null
-        );
+        if ($this->columnExists('image_filename') || $this->columnExists('image_url')) {
+            $data = array(
+                'image_filename' => null,
+                'image_url' => null,
+                'image_alt_text' => null
+            );
 
-        $filtered = $this->filterColumns($data, true);
+            $filtered = $this->filterColumns($data, true);
 
-        if (empty($filtered)) {
-            errorResponse('Image columns not available in schema', 500);
+            if (empty($filtered)) {
+                errorResponse('Image columns not available in schema', 500);
+            }
+
+            $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
+            jsonResponse(['message' => 'Image removed successfully']);
+            return;
         }
 
-        $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
-        jsonResponse(['message' => 'Image removed successfully']);
+        if ($this->hasStaffImagesTable()) {
+            $this->db->delete('staff_images', 'staff_id = :staff_id', array('staff_id' => $id));
+            jsonResponse(['message' => 'Image removed successfully']);
+            return;
+        }
+
+        errorResponse('Image support is not configured for school staff', 501);
     }
 
     private function mapRow($row) {
@@ -372,5 +439,18 @@ class SchoolStaffEndpoints {
         }
 
         return $filtered;
+    }
+
+    private function hasStaffImagesTable() {
+        static $hasTable = null;
+        if ($hasTable === null) {
+            $count = $this->db->fetchColumn(
+                "SELECT COUNT(*)
+                 FROM information_schema.tables
+                 WHERE table_schema = DATABASE() AND table_name = 'staff_images'"
+            );
+            $hasTable = ((int)$count) > 0;
+        }
+        return $hasTable;
     }
 }
