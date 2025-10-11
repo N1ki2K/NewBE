@@ -103,7 +103,7 @@ const GalleryPage: React.FC = () => {
           {images.map((image, index) => (
             <div key={image.id} className="overflow-hidden rounded-lg shadow-md group cursor-pointer" onClick={() => openLightbox(index)}>
               <EditableImage
-                id={`gallery-${image.id}`}
+                id={image.id}
                 defaultSrc={image.src}
                 alt={image.alt}
                 className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500 ease-in-out"
@@ -133,7 +133,7 @@ const GalleryPage: React.FC = () => {
           <button onClick={showPrevImage} className="absolute left-4 sm:left-6 text-white text-4xl p-2 bg-black bg-opacity-30 rounded-full hover:bg-opacity-50 transition-all" aria-label={t.galleryPage?.lightbox?.prev || 'Previous image'}>&#10094;</button>
 
           <EditableImage
-            id={`gallery-lightbox-${images[selectedImageIndex].id}`}
+            id={images[selectedImageIndex].id}
             defaultSrc={images[selectedImageIndex].src}
             alt={images[selectedImageIndex].alt}
             className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
