@@ -22,12 +22,32 @@ interface ImagePickerProps {
   onClose: () => void;
 }
 
-const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, onClose }) => {
+const API_BASE_URL = (() => {
+  const base = getApiBaseUrl();
+  return base.endsWith('/') ? base.slice(0, -1) : base;
+})();
+
+const resolveMediaUrl = (url?: string | null, baseUrl: string = API_BASE_URL) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  if (url.startsWith('/')) {
+    return `${normalizedBase}${url}`;
+  }
+  return `${normalizedBase}/${url}`;
+};
+
+interface InternalImagePickerProps extends ImagePickerProps {
+  resolveUrl: (url: string) => string;
+}
+
+const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, currentImage, onClose, resolveUrl }) => {
   const { t } = useLanguage();
   const [picturesImages, setPicturesImages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const apiBaseUrl = getApiBaseUrl();
 
   useEffect(() => {
     loadPicturesImages();
@@ -92,17 +112,18 @@ const ImagePicker: React.FC<ImagePickerProps> = ({ onImageSelect, currentImage, 
               const imageUrl = `${apiBaseUrl}${image.url}`;
               const isSelected = currentImage === imageUrl || currentImage === image.url;
               
+              const previewUrl = resolveUrl(image.url);
               return (
                 <div 
                   key={image.filename} 
                   className={`border-2 rounded-lg p-2 cursor-pointer transition-all hover:shadow-md ${
                     isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-300'
                   }`}
-                  onClick={() => onImageSelect(imageUrl, image.filename)}
+                  onClick={() => onImageSelect(previewUrl, image.filename)}
                 >
                   <div className="aspect-square mb-2 bg-gray-200 rounded overflow-hidden">
                     <img 
-                      src={imageUrl}
+                      src={previewUrl}
                       alt={image.filename}
                       className="w-full h-full object-cover"
                       onError={(e) => {

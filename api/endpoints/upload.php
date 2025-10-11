@@ -69,9 +69,25 @@ class UploadEndpoints {
             $types = function_exists('get_allowed_image_types') ? get_allowed_image_types() : array();
             $this->validateFile($file, $types);
 
-            // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid() . '_' . time() . '.' . $extension;
+            // Generate filesystem-safe filename based on original name
+            $originalName = $file['name'];
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+            $safeBase = preg_replace('/[^A-Za-z0-9_-]+/', '-', $baseName);
+            if ($safeBase === '' || $safeBase === null) {
+                $safeBase = 'uploaded-image';
+            }
+
+            $filename = $safeBase . ($extension ? ('.' . $extension) : '');
+            $targetPath = UPLOAD_PICTURES_DIR . $filename;
+
+            // Prevent overwriting existing files
+            $counter = 1;
+            while (file_exists($targetPath)) {
+                $filename = $safeBase . '-' . $counter . ($extension ? ('.' . $extension) : '');
+                $targetPath = UPLOAD_PICTURES_DIR . $filename;
+                $counter++;
+            }
             $targetPath = UPLOAD_PICTURES_DIR . $filename;
 
             // Move file
@@ -85,7 +101,7 @@ class UploadEndpoints {
             // Save to media_files table
             $this->db->insert('media_files', [
                 'filename' => $filename,
-                'original_name' => $file['name'],
+            'original_name' => $originalName,
                 'file_path' => $targetPath,
                 'file_type' => 'image',
                 'mime_type' => $file['type'],
@@ -96,7 +112,7 @@ class UploadEndpoints {
             jsonResponse([
                 'url' => $url,
                 'filename' => $filename,
-                'originalName' => $file['name'],
+            'originalName' => $originalName,
                 'size' => $file['size'],
                 'message' => 'Image uploaded successfully'
             ]);
@@ -164,10 +180,22 @@ class UploadEndpoints {
             $types = function_exists('get_allowed_document_types') ? get_allowed_document_types() : array();
             $this->validateFile($file, $types);
 
-            // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid() . '_' . time() . '.' . $extension;
+            $originalName = $file['name'];
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+            $safeBase = preg_replace('/[^A-Za-z0-9_-]+/', '-', $baseName);
+            if ($safeBase === '' || $safeBase === null) {
+                $safeBase = 'uploaded-document';
+            }
+
+            $filename = $safeBase . ($extension ? ('.' . $extension) : '');
             $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
+            $counter = 1;
+            while (file_exists($targetPath)) {
+                $filename = $safeBase . '-' . $counter . ($extension ? ('.' . $extension) : '');
+                $targetPath = UPLOAD_DOCUMENTS_DIR . $filename;
+                $counter++;
+            }
 
             // Move file
             if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
@@ -179,7 +207,7 @@ class UploadEndpoints {
             // Save to media_files table
             $this->db->insert('media_files', [
                 'filename' => $filename,
-                'original_name' => $file['name'],
+                'original_name' => $originalName,
                 'file_path' => $targetPath,
                 'file_type' => 'document',
                 'mime_type' => $file['type'],
@@ -190,7 +218,7 @@ class UploadEndpoints {
             jsonResponse([
                 'url' => $url,
                 'filename' => $filename,
-                'originalName' => $file['name'],
+                'originalName' => $originalName,
                 'size' => $file['size'],
                 'message' => 'Document uploaded successfully'
             ]);
@@ -256,10 +284,22 @@ class UploadEndpoints {
             $types = function_exists('get_allowed_presentation_types') ? get_allowed_presentation_types() : array();
             $this->validateFile($file, $types);
 
-            // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid() . '_' . time() . '.' . $extension;
+            $originalName = $file['name'];
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $baseName = pathinfo($originalName, PATHINFO_FILENAME);
+            $safeBase = preg_replace('/[^A-Za-z0-9_-]+/', '-', $baseName);
+            if ($safeBase === '' || $safeBase === null) {
+                $safeBase = 'uploaded-presentation';
+            }
+
+            $filename = $safeBase . ($extension ? ('.' . $extension) : '');
             $targetPath = UPLOAD_PRESENTATIONS_DIR . $filename;
+            $counter = 1;
+            while (file_exists($targetPath)) {
+                $filename = $safeBase . '-' . $counter . ($extension ? ('.' . $extension) : '');
+                $targetPath = UPLOAD_PRESENTATIONS_DIR . $filename;
+                $counter++;
+            }
 
             // Move file
             if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
@@ -271,7 +311,7 @@ class UploadEndpoints {
             // Save to media_files table
             $this->db->insert('media_files', [
                 'filename' => $filename,
-                'original_name' => $file['name'],
+                'original_name' => $originalName,
                 'file_path' => $targetPath,
                 'file_type' => 'presentation',
                 'mime_type' => $file['type'],
@@ -282,7 +322,7 @@ class UploadEndpoints {
             jsonResponse([
                 'url' => $url,
                 'filename' => $filename,
-                'originalName' => $file['name'],
+                'originalName' => $originalName,
                 'size' => $file['size'],
                 'message' => 'Presentation uploaded successfully'
             ]);
