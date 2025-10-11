@@ -11,39 +11,8 @@ class UploadEndpoints {
         $this->db = Database::getInstance();
     }
 
-    private function getHeaders() {
-        if (function_exists('getallheaders')) {
-            return getallheaders();
-        }
-        $headers = [];
-        foreach ($_SERVER as $name => $value) {
-            if (substr($name, 0, 5) == 'HTTP_') {
-                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
-            }
-        }
-        return $headers;
-    }
-
-    private function optionalRequireEditorOrAdmin() {
-        $headers = $this->getHeaders();
-        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
-            return AuthMiddleware::requireEditorOrAdmin();
-        }
-        return null;
-    }
-
-    private function optionalAuthenticate() {
-        $headers = $this->getHeaders();
-        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
-            return AuthMiddleware::authenticate();
-        }
-        return null;
-    }
-
     // POST /api/upload/image
     public function uploadImage() {
-        $user = $this->optionalRequireEditorOrAdmin();
-
         if (!isset($_FILES['image'])) {
             errorResponse('No image file provided', 400);
         }
@@ -75,7 +44,7 @@ class UploadEndpoints {
             'file_type' => 'image',
             'mime_type' => $file['type'],
             'file_size' => $file['size'],
-            'uploaded_by' => $user ? $user['id'] : 0
+            'uploaded_by' => null
         ]);
 
         jsonResponse([
@@ -89,8 +58,6 @@ class UploadEndpoints {
 
     // GET /api/upload/pictures
     public function getPicturesImages() {
-        $this->optionalAuthenticate();
-
         $files = glob(UPLOAD_PICTURES_DIR . '*');
         $images = [];
 
@@ -116,8 +83,6 @@ class UploadEndpoints {
 
     // DELETE /api/upload/pictures/:filename
     public function deletePictureImage($filename) {
-        $this->optionalRequireEditorOrAdmin();
-
         $filePath = UPLOAD_PICTURES_DIR . $filename;
 
         if (!file_exists($filePath)) {
@@ -136,8 +101,6 @@ class UploadEndpoints {
 
     // POST /api/upload/document
     public function uploadDocument() {
-        $user = $this->optionalRequireEditorOrAdmin();
-
         if (!isset($_FILES['document'])) {
             errorResponse('No document file provided', 400);
         }
@@ -168,7 +131,7 @@ class UploadEndpoints {
             'file_type' => 'document',
             'mime_type' => $file['type'],
             'file_size' => $file['size'],
-            'uploaded_by' => $user ? $user['id'] : 0
+            'uploaded_by' => null
         ]);
 
         jsonResponse([
@@ -182,8 +145,6 @@ class UploadEndpoints {
 
     // GET /api/upload/documents
     public function getDocuments() {
-        $this->optionalAuthenticate();
-
         $files = glob(UPLOAD_DOCUMENTS_DIR . '*');
         $documents = [];
 
@@ -208,8 +169,6 @@ class UploadEndpoints {
 
     // DELETE /api/upload/documents/:filename
     public function deleteDocument($filename) {
-        $this->optionalRequireEditorOrAdmin();
-
         $filePath = UPLOAD_DOCUMENTS_DIR . $filename;
 
         if (!file_exists($filePath)) {
@@ -227,8 +186,6 @@ class UploadEndpoints {
 
     // POST /api/upload/presentation
     public function uploadPresentation() {
-        $user = $this->optionalRequireEditorOrAdmin();
-
         if (!isset($_FILES['presentation'])) {
             errorResponse('No presentation file provided', 400);
         }
@@ -259,7 +216,7 @@ class UploadEndpoints {
             'file_type' => 'presentation',
             'mime_type' => $file['type'],
             'file_size' => $file['size'],
-            'uploaded_by' => $user ? $user['id'] : 0
+            'uploaded_by' => null
         ]);
 
         jsonResponse([
@@ -273,8 +230,6 @@ class UploadEndpoints {
 
     // GET /api/upload/presentations
     public function getPresentations() {
-        $this->optionalAuthenticate();
-
         $files = glob(UPLOAD_PRESENTATIONS_DIR . '*');
         $presentations = [];
 
@@ -299,8 +254,6 @@ class UploadEndpoints {
 
     // DELETE /api/upload/presentations/:filename
     public function deletePresentation($filename) {
-        $this->optionalRequireEditorOrAdmin();
-
         $filePath = UPLOAD_PRESENTATIONS_DIR . $filename;
 
         if (!file_exists($filePath)) {
@@ -318,8 +271,6 @@ class UploadEndpoints {
 
     // POST /api/news/:newsId/attachments
     public function uploadNewsAttachment($newsId) {
-        $user = $this->optionalRequireEditorOrAdmin();
-
         if (!isset($_FILES['file'])) {
             errorResponse('No file provided', 400);
         }
