@@ -39,8 +39,13 @@ class ApiService {
         throw new ApiError(response.status, errorData.error || 'Request failed');
       }
 
-      const data = await response.json();
-      return data;
+      const rawBody = await response.text();
+      try {
+        return rawBody ? JSON.parse(rawBody) : ({} as T);
+      } catch (parseError) {
+        console.error('Invalid JSON response:', rawBody);
+        throw new ApiError(0, 'Server returned invalid JSON response');
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         if (error.status === 401 || error.status === 403) {
