@@ -2,11 +2,15 @@
 
 class HistoryEndpoints
 {
-    private $db;
+    private $conn;
 
     public function __construct()
     {
-        $this->db = Database::getInstance();
+        $this->conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+        if ($this->conn->connect_error) {
+            errorResponse('Database connection failed: ' . $this->conn->connect_error, 500);
+        }
+
         $this->ensureSchema();
         $this->seedDefaultSections();
     }
@@ -30,17 +34,18 @@ class HistoryEndpoints
             return;
         }
 
-        switch ($method) {
-            case 'GET':
-                $this->getPublicSections();
-                return;
-            case 'POST':
-                AuthMiddleware::check();
-                $this->createSection();
-                return;
-            default:
-                errorResponse('Method Not Allowed', 405);
+        if ($method === 'GET') {
+            $this->getPublicSections();
+            return;
         }
+
+        if ($method === 'POST') {
+            AuthMiddleware::check();
+            $this->createSection();
+            return;
+        }
+
+        errorResponse('Method Not Allowed', 405);
     }
 
     private function handleAdmin(array $segments, string $method): void
@@ -48,17 +53,49 @@ class HistoryEndpoints
         AuthMiddleware::check();
         $target = $segments[0] ?? '';
 
-        switch ($method) {
-            case 'GET':
-                if ($target === '') {
-                    $this->getAdminSections();
-                } else {
-                    $this->getSection((int) $target, true);
-                }
-                return;
-            default:
-                errorResponse('Method Not Allowed', 405);
+        if ($method !== 'GET') {
+            errorResponse('Method Not Allowed', 405);
         }
+
+        if ($target === '') {
+            $this->getAdminSections();
+        } else {
+            $this->getSection((int) $target, true);
+        }
+    }
+
+    private function handleReorder(string $method): void
+    {
+        if ($method !== 'PUT') {
+            errorResponse('Method Not Allowed', 405);
+        }
+
+        AuthMiddleware::check();
+        $data = $this->readJson();
+
+        if (!isset($data['sections']) || !is_array($data['sections'])) {
+            errorResponse('Invalid payload supplied', 400);
+        }
+
+        foreach ($data['sections'] as $section) {
+            if (!isset($section['id'])) {
+                continue;
+            }
+
+            $position = isset($section['position']) ? (int) $section['position'] : null;
+            if ($position === null) {
+                continue;
+            }
+
+            $stmt = $this->conn->prepare("UPDATE history_sections SET position = ?, updated_at = NOW() WHERE id = ?");
+            if ($stmt) {
+                $stmt->bind_param('ii', $position, $section['id']);
+                $stmt->execute();
+                $stmt->close();
+            }
+        }
+
+        jsonResponse(['success' => true, 'message' => 'History sections reordered successfully']);
     }
 
     private function handleSingle(int $id, string $method): void
@@ -80,211 +117,264 @@ class HistoryEndpoints
         }
     }
 
-    private function handleReorder(string $method): void
-    {
-        if ($method !== 'PUT') {
-            errorResponse('Method Not Allowed', 405);
-        }
-
-        AuthMiddleware::check();
-        $payload = $this->readJson();
-        if (!isset($payload['sections']) || !is_array($payload['sections'])) {
-            errorResponse('sections payload is required', 400);
-        }
-
-        foreach ($payload['sections'] as $section) {
-            if (!isset($section['id'])) {
-                continue;
-            }
-
-            $position = isset($section['position']) ? (int) $section['position'] : null;
-            if ($position === null) {
-                continue;
-            }
-
-            $this->db->query(
-                "UPDATE history_sections SET position = :position, updated_at = NOW() WHERE id = :id",
-                [
-                    'position' => $position,
-                    'id' => (int) $section['id'],
-                ]
-            );
-        }
-
-        jsonResponse(['success' => true, 'message' => 'Sections reordered successfully']);
-    }
-
     private function getPublicSections(): void
     {
-        $lang = isset($_GET['lang']) ? strtolower((string) $_GET['lang']) : 'bg';
+        $language = isset($_GET['lang']) ? strtolower((string) $_GET['lang']) : 'bg';
+        $stmt = $this->conn->prepare("SELECT * FROM history_sections WHERE is_active = 1 ORDER BY position ASC, id ASC");
+        $sections = $this->fetchAll($stmt);
+        if ($stmt) {
+            $stmt->close();
+        }
 
-        $rows = $this->db->fetchAll(
-            "SELECT * FROM history_sections WHERE is_active = 1 ORDER BY position ASC, id ASC"
-        );
+        $content = array_map(function ($row) use ($language) {
+            return $this->transformForPublic($row, $language);
+        }, $sections);
 
-        $sections = array_map(function ($row) use ($lang) {
-            return $this->transformForPublic($row, $lang);
-        }, $rows);
-
-        jsonResponse(['success' => true, 'sections' => $sections]);
+        jsonResponse(['success' => true, 'content' => $content]);
     }
 
     private function getAdminSections(): void
     {
-        $rows = $this->db->fetchAll(
-            "SELECT * FROM history_sections ORDER BY position ASC, id ASC"
-        );
+        $stmt = $this->conn->prepare("SELECT * FROM history_sections ORDER BY position ASC, id ASC");
+        $sections = $this->fetchAll($stmt);
+        if ($stmt) {
+            $stmt->close();
+        }
 
-        $sections = array_map([$this, 'transformForAdmin'], $rows);
-
-        jsonResponse(['success' => true, 'sections' => $sections]);
+        $content = array_map([$this, 'transformForAdmin'], $sections);
+        jsonResponse(['success' => true, 'content' => $content]);
     }
 
     private function getSection(int $id, bool $adminView): void
     {
-        $row = $this->db->fetchOne(
-            "SELECT * FROM history_sections WHERE id = ?",
-            [$id]
-        );
+        $stmt = $this->conn->prepare("SELECT * FROM history_sections WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        $rows = $this->fetchAll($stmt);
+        $stmt->close();
 
-        if (!$row) {
+        if (empty($rows)) {
             errorResponse('History section not found', 404);
         }
 
+        $row = $rows[0];
+
         if ($adminView) {
-            jsonResponse(['success' => true, 'section' => $this->transformForAdmin($row)]);
+            jsonResponse(['success' => true, 'content' => $this->transformForAdmin($row)]);
             return;
         }
 
-        $lang = isset($_GET['lang']) ? strtolower((string) $_GET['lang']) : 'bg';
-        jsonResponse(['success' => true, 'section' => $this->transformForPublic($row, $lang)]);
+        $language = isset($_GET['lang']) ? strtolower((string) $_GET['lang']) : 'bg';
+        jsonResponse(['success' => true, 'content' => $this->transformForPublic($row, $language)]);
     }
 
     private function createSection(): void
     {
-        $payload = $this->readJson();
-        $sectionKey = isset($payload['section_key']) ? trim((string) $payload['section_key']) : '';
+        $data = $this->readJson();
+
+        $sectionKey = isset($data['section_key']) ? trim((string) $data['section_key']) : '';
         if ($sectionKey === '') {
             errorResponse('section_key is required', 422);
         }
 
-        $exists = $this->db->fetchOne(
-            "SELECT id FROM history_sections WHERE section_key = ?",
-            [$sectionKey]
-        );
+        $stmt = $this->conn->prepare("SELECT id FROM history_sections WHERE section_key = ?");
+        $stmt->bind_param('s', $sectionKey);
+        $existing = $this->fetchAll($stmt);
+        $stmt->close();
 
-        if ($exists) {
+        if (!empty($existing)) {
             errorResponse('Section key already exists', 409);
         }
 
-        $position = isset($payload['position']) ? (int) $payload['position'] : $this->nextPosition();
+        $position = isset($data['position']) ? (int) $data['position'] : $this->determineNextPosition();
 
-        $data = [
-            'section_key' => $sectionKey,
-            'title_bg' => $this->nullable($payload['title_bg'] ?? null),
-            'title_en' => $this->nullable($payload['title_en'] ?? null),
-            'content_bg' => $this->nullable($payload['content_bg'] ?? null),
-            'content_en' => $this->nullable($payload['content_en'] ?? null),
-            'image_url' => $this->nullable($payload['image_url'] ?? null),
-            'position' => $position,
-            'is_active' => $this->boolToInt($payload['is_active'] ?? true),
-        ];
+        $stmt = $this->conn->prepare(
+            "INSERT INTO history_sections (
+                section_key, title_bg, title_en, content_bg, content_en, image_url, position, is_active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
 
-        $id = $this->db->insert('history_sections', $data);
-        $row = $this->db->fetchOne("SELECT * FROM history_sections WHERE id = ?", [$id]);
+        $titleBg = $this->nullableString($data['title_bg'] ?? null);
+        $titleEn = $this->nullableString($data['title_en'] ?? null);
+        $contentBg = $this->nullableString($data['content_bg'] ?? null);
+        $contentEn = $this->nullableString($data['content_en'] ?? null);
+        $imageUrl = $this->nullableString($data['image_url'] ?? null);
+        $isActive = $this->boolToInt($data['is_active'] ?? true);
 
-        jsonResponse([
-            'success' => true,
-            'message' => 'History section created successfully',
-            'section' => $this->transformForAdmin($row),
-        ], 201);
+        $stmt->bind_param(
+            'ssssssii',
+            $sectionKey,
+            $titleBg,
+            $titleEn,
+            $contentBg,
+            $contentEn,
+            $imageUrl,
+            $position,
+            $isActive
+        );
+        $stmt->execute();
+        $stmt->close();
+
+        $this->getSection((int) $this->conn->insert_id, true);
     }
 
     private function updateSection(int $id): void
     {
-        $existing = $this->db->fetchOne(
-            "SELECT * FROM history_sections WHERE id = ?",
-            [$id]
-        );
+        $stmt = $this->conn->prepare("SELECT * FROM history_sections WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        $existing = $this->fetchAll($stmt);
+        $stmt->close();
 
-        if (!$existing) {
+        if (empty($existing)) {
             errorResponse('History section not found', 404);
         }
 
-        $payload = $this->readJson();
+        $data = $this->readJson();
+
         $updates = [];
+        $params = [];
+        $types = '';
 
-        $fields = ['section_key', 'title_bg', 'title_en', 'content_bg', 'content_en', 'image_url', 'position', 'is_active'];
-        foreach ($fields as $field) {
-            if (!array_key_exists($field, $payload)) {
-                continue;
-            }
-            $value = $payload[$field];
-            if (in_array($field, ['title_bg', 'title_en', 'content_bg', 'content_en', 'image_url', 'section_key'], true)) {
-                $value = $this->nullable($value);
-            }
-            if ($field === 'is_active') {
-                $value = $this->boolToInt($value);
-            }
-            if ($field === 'position' && $value !== null) {
-                $value = (int) $value;
-            }
+        $fields = [
+            'section_key' => 's',
+            'title_bg' => 's',
+            'title_en' => 's',
+            'content_bg' => 's',
+            'content_en' => 's',
+            'image_url' => 's',
+            'position' => 'i',
+            'is_active' => 'i',
+        ];
 
-            if ($field === 'section_key' && $value !== null) {
-                $dup = $this->db->fetchOne(
-                    "SELECT id FROM history_sections WHERE section_key = ? AND id <> ?",
-                    [$value, $id]
-                );
-                if ($dup) {
-                    errorResponse('Another section already uses this key', 409);
+        foreach ($fields as $field => $type) {
+            if (array_key_exists($field, $data)) {
+                $value = $data[$field];
+                if (in_array($field, ['title_bg', 'title_en', 'content_bg', 'content_en', 'image_url', 'section_key'], true)) {
+                    $value = $this->nullableString($value);
                 }
-            }
+                if ($field === 'position' && $value !== null) {
+                    $value = (int) $value;
+                }
+                if ($field === 'is_active') {
+                    $value = $this->boolToInt($value);
+                }
 
-            $updates[$field] = $value;
+                $updates[] = "$field = ?";
+                $params[] = $value;
+                $types .= $type;
+            }
         }
 
         if (empty($updates)) {
-            jsonResponse([
-                'success' => true,
-                'message' => 'No changes supplied',
-                'section' => $this->transformForAdmin($existing),
-            ]);
+            $this->getSection($id, true);
+            return;
         }
 
-        $setParts = [];
-        foreach ($updates as $col => $value) {
-            $setParts[] = "{$col} = :{$col}";
-        }
-        $updates['id'] = $id;
+        $types .= 'i';
+        $params[] = $id;
 
-        $this->db->query(
-            "UPDATE history_sections SET " . implode(', ', $setParts) . ", updated_at = NOW() WHERE id = :id",
-            $updates
-        );
+        $sql = "UPDATE history_sections SET " . implode(', ', $updates) . ", updated_at = NOW() WHERE id = ?";
+        $stmt = $this->conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $stmt->close();
 
-        $row = $this->db->fetchOne("SELECT * FROM history_sections WHERE id = ?", [$id]);
-
-        jsonResponse([
-            'success' => true,
-            'message' => 'History section updated successfully',
-            'section' => $this->transformForAdmin($row),
-        ]);
+        $this->getSection($id, true);
     }
 
     private function deleteSection(int $id): void
     {
-        $deleted = $this->db->delete('history_sections', 'id = :id', ['id' => $id]);
+        $stmt = $this->conn->prepare("DELETE FROM history_sections WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
 
-        if ($deleted === 0) {
+        if ($stmt->affected_rows === 0) {
+            $stmt->close();
             errorResponse('History section not found', 404);
         }
 
+        $stmt->close();
         jsonResponse(['success' => true, 'message' => 'History section deleted successfully']);
     }
 
-    private function transformForPublic(array $row, string $lang): array
+    private function ensureSchema(): void
     {
-        $isEnglish = $lang === 'en';
+        $this->conn->query(
+            "CREATE TABLE IF NOT EXISTS history_sections (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                section_key VARCHAR(100) NOT NULL UNIQUE,
+                title_bg VARCHAR(500) NULL,
+                title_en VARCHAR(500) NULL,
+                content_bg LONGTEXT NULL,
+                content_en LONGTEXT NULL,
+                image_url VARCHAR(500) NULL,
+                position INT NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_position (position),
+                INDEX idx_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    }
+
+    private function seedDefaultSections(): void
+    {
+        $result = $this->conn->query("SELECT COUNT(*) AS count FROM history_sections");
+        $row = $result ? $result->fetch_assoc() : ['count' => 0];
+        if ((int) $row['count'] > 0) {
+            return;
+        }
+
+        $defaults = [
+            [
+                'section_key' => 'history-intro',
+                'title_bg' => 'История на училището',
+                'title_en' => 'School History',
+                'content_bg' => 'Нашето училище има богата история и традиции в образованието.',
+                'content_en' => 'Our school has a rich history and tradition in education.',
+                'image_url' => null,
+                'position' => 1,
+                'is_active' => 1,
+            ],
+            [
+                'section_key' => 'history-mission',
+                'title_bg' => 'Мисия',
+                'title_en' => 'Mission',
+                'content_bg' => 'Да възпитаваме отговорни граждани с любов към знанието и родината.',
+                'content_en' => 'To educate responsible citizens with love for knowledge and homeland.',
+                'image_url' => null,
+                'position' => 2,
+                'is_active' => 1,
+            ],
+        ];
+
+        $stmt = $this->conn->prepare(
+            "INSERT INTO history_sections (
+                section_key, title_bg, title_en, content_bg, content_en, image_url, position, is_active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+
+        foreach ($defaults as $section) {
+            $stmt->bind_param(
+                'ssssssii',
+                $section['section_key'],
+                $section['title_bg'],
+                $section['title_en'],
+                $section['content_bg'],
+                $section['content_en'],
+                $section['image_url'],
+                $section['position'],
+                $section['is_active']
+            );
+            $stmt->execute();
+        }
+
+        $stmt->close();
+    }
+
+    private function transformForPublic(array $row, string $language): array
+    {
+        $isEnglish = $language === 'en';
 
         $title = $isEnglish
             ? ($row['title_en'] ?? $row['title_bg'])
@@ -321,99 +411,34 @@ class HistoryEndpoints
         ];
     }
 
-    private function ensureSchema(): void
+    private function determineNextPosition(): int
     {
-        $exists = $this->db->fetchColumn(
-            "SELECT COUNT(*)
-             FROM information_schema.tables
-             WHERE table_schema = DATABASE() AND table_name = 'history_sections'"
-        );
-
-        if ((int) $exists === 0) {
-            $this->db->query(
-                "CREATE TABLE history_sections (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    section_key VARCHAR(100) NOT NULL UNIQUE,
-                    title_bg VARCHAR(500) NULL,
-                    title_en VARCHAR(500) NULL,
-                    content_bg LONGTEXT NULL,
-                    content_en LONGTEXT NULL,
-                    image_url VARCHAR(500) NULL,
-                    position INT NOT NULL DEFAULT 0,
-                    is_active TINYINT(1) NOT NULL DEFAULT 1,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_position (position),
-                    INDEX idx_active (is_active)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
-            );
-        } else {
-            $columns = $this->db->fetchAll("SHOW COLUMNS FROM history_sections");
-            $existing = [];
-            foreach ($columns as $column) {
-                $existing[$column['Field']] = true;
-            }
-
-            $required = [
-                'section_key' => "ALTER TABLE history_sections ADD COLUMN section_key VARCHAR(100) NOT NULL UNIQUE",
-                'title_bg' => "ALTER TABLE history_sections ADD COLUMN title_bg VARCHAR(500) NULL",
-                'title_en' => "ALTER TABLE history_sections ADD COLUMN title_en VARCHAR(500) NULL",
-                'content_bg' => "ALTER TABLE history_sections ADD COLUMN content_bg LONGTEXT NULL",
-                'content_en' => "ALTER TABLE history_sections ADD COLUMN content_en LONGTEXT NULL",
-                'image_url' => "ALTER TABLE history_sections ADD COLUMN image_url VARCHAR(500) NULL",
-                'position' => "ALTER TABLE history_sections ADD COLUMN position INT NOT NULL DEFAULT 0",
-                'is_active' => "ALTER TABLE history_sections ADD COLUMN is_active TINYINT(1) NOT NULL DEFAULT 1",
-                'created_at' => "ALTER TABLE history_sections ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP",
-                'updated_at' => "ALTER TABLE history_sections ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
-            ];
-
-            foreach ($required as $column => $sql) {
-                if (!isset($existing[$column])) {
-                    $this->db->query($sql);
-                }
-            }
+        $result = $this->conn->query("SELECT MAX(position) AS max_position FROM history_sections");
+        if (!$result) {
+            return 1;
         }
+
+        $row = $result->fetch_assoc();
+        $result->free();
+
+        return $row && $row['max_position'] !== null ? ((int) $row['max_position']) + 1 : 1;
     }
 
-    private function seedDefaultSections(): void
+    private function fetchAll(?mysqli_stmt $stmt): array
     {
-        $count = $this->db->fetchColumn("SELECT COUNT(*) FROM history_sections");
-        if ((int) $count > 0) {
-            return;
+        if (!$stmt) {
+            return [];
         }
 
-        $defaults = [
-            [
-                'section_key' => 'history-intro',
-                'title_bg' => 'История на училището',
-                'title_en' => 'School History',
-                'content_bg' => 'Нашето училище има богата история и традиции в образованието.',
-                'content_en' => 'Our school has a rich history and tradition in education.',
-                'image_url' => null,
-                'position' => 1,
-                'is_active' => 1,
-            ],
-            [
-                'section_key' => 'history-mission',
-                'title_bg' => 'Мисия',
-                'title_en' => 'Mission',
-                'content_bg' => 'Да възпитаваме отговорни граждани с любов към знанието и родината.',
-                'content_en' => 'To educate responsible citizens with love for knowledge and homeland.',
-                'image_url' => null,
-                'position' => 2,
-                'is_active' => 1,
-            ],
-        ];
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows = $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
 
-        foreach ($defaults as $section) {
-            $this->db->insert('history_sections', $section);
+        if ($result) {
+            $result->free();
         }
-    }
 
-    private function nextPosition(): int
-    {
-        $max = $this->db->fetchColumn("SELECT MAX(position) FROM history_sections");
-        return $max !== null ? ((int) $max) + 1 : 1;
+        return $rows;
     }
 
     private function readJson(): array
@@ -423,15 +448,15 @@ class HistoryEndpoints
             return [];
         }
 
-        $decoded = json_decode($raw, true);
-        if (!is_array($decoded)) {
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
             errorResponse('Invalid JSON payload', 400);
         }
 
-        return $decoded;
+        return $data;
     }
 
-    private function nullable($value): ?string
+    private function nullableString($value): ?string
     {
         if ($value === null) {
             return null;
