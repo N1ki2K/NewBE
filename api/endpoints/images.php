@@ -2,6 +2,7 @@
 
 class ImagesEndpoints {
     private $db;
+    private $columns = null;
 
     public function __construct() {
         $this->db = Database::getInstance();
@@ -145,23 +146,35 @@ class ImagesEndpoints {
     private function prepareData($input, $skipNull = false) {
         $data = array();
 
-        if (array_key_exists('filename', $input)) {
+        if (array_key_exists('filename', $input) && $this->columnExists('filename')) {
             $data['filename'] = $input['filename'];
         }
-        if (array_key_exists('original_name', $input)) {
+        if (array_key_exists('original_name', $input) && $this->columnExists('original_name')) {
             $data['original_name'] = $input['original_name'];
         }
-        if (array_key_exists('url', $input)) {
+        if (array_key_exists('url', $input) && $this->columnExists('url')) {
             $data['url'] = $input['url'];
         }
-        if (array_key_exists('alt_text', $input)) {
+        if (array_key_exists('alt_text', $input) && $this->columnExists('alt_text')) {
             $data['alt_text'] = $input['alt_text'];
         }
-        if (array_key_exists('page_id', $input)) {
+        if (array_key_exists('page_id', $input) && $this->columnExists('page_id')) {
             $data['page_id'] = $input['page_id'];
         }
-        if (array_key_exists('description', $input)) {
+        if (array_key_exists('description', $input) && $this->columnExists('description')) {
             $data['description'] = $input['description'];
+        }
+        if (array_key_exists('file_size', $input) && $this->columnExists('file_size')) {
+            $data['file_size'] = $input['file_size'];
+        }
+        if (array_key_exists('mime_type', $input) && $this->columnExists('mime_type')) {
+            $data['mime_type'] = $input['mime_type'];
+        }
+        if (array_key_exists('width', $input) && $this->columnExists('width')) {
+            $data['width'] = $input['width'];
+        }
+        if (array_key_exists('height', $input) && $this->columnExists('height')) {
+            $data['height'] = $input['height'];
         }
 
         if ($skipNull) {
@@ -175,15 +188,33 @@ class ImagesEndpoints {
 
     private function mapRow($row) {
         return array(
-            'id' => $row['id'],
-            'filename' => isset($row['filename']) ? $row['filename'] : null,
-            'original_name' => isset($row['original_name']) ? $row['original_name'] : null,
-            'url' => isset($row['url']) ? $row['url'] : null,
-            'alt_text' => isset($row['alt_text']) ? $row['alt_text'] : null,
-            'page_id' => isset($row['page_id']) ? $row['page_id'] : null,
-            'description' => isset($row['description']) ? $row['description'] : null,
-            'created_at' => isset($row['created_at']) ? $row['created_at'] : null,
-            'updated_at' => isset($row['updated_at']) ? $row['updated_at'] : null,
+            'id' => isset($row['id']) ? $row['id'] : null,
+            'filename' => $this->columnExists('filename') && isset($row['filename']) ? $row['filename'] : null,
+            'original_name' => $this->columnExists('original_name') && isset($row['original_name']) ? $row['original_name'] : null,
+            'url' => $this->columnExists('url') && isset($row['url']) ? $row['url'] : null,
+            'alt_text' => $this->columnExists('alt_text') && isset($row['alt_text']) ? $row['alt_text'] : null,
+            'page_id' => $this->columnExists('page_id') && isset($row['page_id']) ? $row['page_id'] : null,
+            'description' => $this->columnExists('description') && isset($row['description']) ? $row['description'] : null,
+            'file_size' => $this->columnExists('file_size') && isset($row['file_size']) ? (int)$row['file_size'] : null,
+            'mime_type' => $this->columnExists('mime_type') && isset($row['mime_type']) ? $row['mime_type'] : null,
+            'width' => $this->columnExists('width') && isset($row['width']) ? (int)$row['width'] : null,
+            'height' => $this->columnExists('height') && isset($row['height']) ? (int)$row['height'] : null,
+            'created_at' => $this->columnExists('created_at') && isset($row['created_at']) ? $row['created_at'] : null,
+            'updated_at' => $this->columnExists('updated_at') && isset($row['updated_at']) ? $row['updated_at'] : null,
         );
+    }
+
+    private function getColumns() {
+        if ($this->columns === null) {
+            $rows = $this->db->fetchAll("SHOW COLUMNS FROM images");
+            $this->columns = array_map(function($row) {
+                return $row['Field'];
+            }, $rows);
+        }
+        return $this->columns;
+    }
+
+    private function columnExists($column) {
+        return in_array($column, $this->getColumns(), true);
     }
 }
