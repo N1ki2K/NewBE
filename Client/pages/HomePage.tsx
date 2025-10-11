@@ -21,7 +21,7 @@ const HeroSection: React.FC = () => {
         />
         <EditableImage
           id="hero-overlay"
-          defaultSrc="/public/uplods/hardcode/hero-overlay.png"
+          defaultSrc="/public/uploads/hardcode/hero-overlay.png"
           alt={getTranslation('homePage.hero.overlayAlt', 'Decorative overlay')}
           className="absolute inset-0 w-full h-full object-cover opacity-75 mix-blend-multiply pointer-events-none select-none"
         />
