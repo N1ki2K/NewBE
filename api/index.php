@@ -67,9 +67,14 @@ switch ($primary) {
         $news->handle(array_slice($segments, 1), $requestMethod);
         break;
 
+    case 'patron':
+        require_once 'endpoints/patron.php';
+        $patron = new PatronEndpoints();
+        $patron->handle(array_slice($segments, 1), $requestMethod);
+        break;
+
     case 'events':
     case 'staff':
-    case 'patron':
     case 'pages':
     case 'content':
     case 'useful-links':
