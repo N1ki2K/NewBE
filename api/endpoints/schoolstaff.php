@@ -268,6 +268,9 @@ class SchoolStaffEndpoints {
             return;
         }
 
+        // Ensure fallback table exists
+        $this->ensureStaffImagesTable();
+
         // Fallback to staff_images table
         $img = $this->db->fetchOne("SELECT image_filename, image_url, alt_text FROM staff_images WHERE staff_id = ?", array($id));
         if (!$img) {
@@ -306,6 +309,7 @@ class SchoolStaffEndpoints {
         }
 
         // Otherwise, upsert into staff_images table
+        $this->ensureStaffImagesTable();
         $data = array(
             'staff_id' => $id,
             'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
@@ -349,10 +353,42 @@ class SchoolStaffEndpoints {
             $this->db->update('school_staff', $filtered, 'id = :id', array('id' => $id));
         } else {
             // Remove from staff_images table if present
+            $this->ensureStaffImagesTable();
             $this->db->delete('staff_images', 'staff_id = ?', array($id));
         }
 
         jsonResponse(['message' => 'Image removed successfully']);
+    }
+
+    private function ensureStaffImagesTable() {
+        try {
+            $exists = $this->db->fetchOne("SHOW TABLES LIKE 'staff_images'");
+            if ($exists) {
+                return;
+            }
+        } catch (Exception $e) {
+            // Continue to attempt creation
+        }
+
+        $sql = "CREATE TABLE IF NOT EXISTS staff_images (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            staff_id INT NOT NULL,
+            image_filename VARCHAR(255) NOT NULL,
+            image_url VARCHAR(500) NOT NULL,
+            alt_text VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (staff_id) REFERENCES school_staff(id) ON DELETE CASCADE,
+            UNIQUE KEY unique_staff_image (staff_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
+
+        try {
+            $this->db->query($sql);
+        } catch (Exception $e) {
+            // If creation fails, we still want a clear error instead of silent failure
+            error_log('Failed to ensure staff_images table: ' . $e->getMessage());
+            // Do not throw here; the subsequent insert/select will surface the DB error
+        }
     }
 
     private function mapRow($row) {
