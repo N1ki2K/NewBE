@@ -19,7 +19,12 @@ const HeroSection: React.FC = () => {
           alt={getTranslation('homePage.hero.alt', 'School building')}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-brand-blue bg-opacity-70"></div>
+        <EditableImage
+          id="hero-overlay"
+          defaultSrc="/public/uplods/hardcode/hero-overlay.png"
+          alt={getTranslation('homePage.hero.overlayAlt', 'Decorative overlay')}
+          className="absolute inset-0 w-full h-full object-cover opacity-75 mix-blend-multiply pointer-events-none select-none"
+        />
       </div>
       <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 md:py-32 text-center">
         <EditableText
