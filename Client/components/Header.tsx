@@ -379,7 +379,7 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div ref={headerContainerRef} className="flex items-center justify-between h-20">
           <Link ref={logoRef} to="/" onClick={closeAllMenus} className="flex items-center space-x-3 rtl:space-x-reverse flex-shrink-0">
-              <img src="../uploads/pictures/1871.png" alt="Logo" className="w-20 h-20 object-contain" />
+              <img src={`${process.env.PUBLIC_URL}/uplods/pictures/1871.png`} alt="Example" />
                <span className="self-center text-xl font-semibold whitespace-nowrap hidden sm:block">{getTranslation('header.title', 'ОУ "Кольо Ганчев"')}</span>
           </Link>
           
