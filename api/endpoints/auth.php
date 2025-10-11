@@ -60,10 +60,11 @@ class AuthEndpoints {
         ]);
 
         // Update last login
-        $this->db->update('users',
+        $this->db->update(
+            'users',
             ['last_login' => date('Y-m-d H:i:s')],
-            'id = ?',
-            [$user['id']]
+            'id = :user_id',
+            ['user_id' => $user['id']]
         );
 
         // Remove password from response
@@ -129,10 +130,11 @@ class AuthEndpoints {
 
         // Update password
         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-        $this->db->update('users',
+        $this->db->update(
+            'users',
             ['password' => $hashedPassword],
-            'id = ?',
-            [$user['id']]
+            'id = :user_id',
+            ['user_id' => $user['id']]
         );
 
         jsonResponse(['message' => 'Password changed successfully']);
