@@ -6,6 +6,7 @@ class SchoolStaffEndpoints {
 
     public function __construct() {
         $this->db = Database::getInstance();
+        $this->ensureSchema();
     }
 
     private function getHeaders() {
@@ -449,8 +450,34 @@ class SchoolStaffEndpoints {
                  FROM information_schema.tables
                  WHERE table_schema = DATABASE() AND table_name = 'staff_images'"
             );
-            $hasTable = ((int)$count) > 0;
+            if ((int)$count === 0) {
+                $this->db->query(
+                    "CREATE TABLE IF NOT EXISTS staff_images (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        staff_id INT NOT NULL,
+                        image_filename VARCHAR(255) NOT NULL,
+                        image_url VARCHAR(500) NOT NULL,
+                        alt_text VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_staff_image (staff_id),
+                        INDEX idx_staff_id (staff_id),
+                        CONSTRAINT fk_staff_images_staff FOREIGN KEY (staff_id) REFERENCES school_staff(id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+                );
+                $hasTable = true;
+            } else {
+                $hasTable = true;
+            }
         }
         return $hasTable;
+    }
+
+    private function ensureSchema() {
+        if ($this->columnExists('image_filename') || $this->columnExists('image_url')) {
+            return;
+        }
+
+        $this->hasStaffImagesTable();
     }
 }
