@@ -94,8 +94,16 @@ if (!class_exists('Database')) {
         }
 
         public function update($table, $data, $where, $whereParams = array()) {
+            $data = array_filter($data, function($value) {
+                return $value !== null;
+            });
+
+            if (empty($data)) {
+                return 0;
+            }
+
             $setParts = array();
-            foreach (array_keys($data) as $col) {
+            foreach ($data as $col => $value) {
                 $setParts[] = "$col = :$col";
             }
 
