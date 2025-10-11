@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { apiService } from '../../src/services/api';
+import { apiService, ApiError } from '../../src/services/api';
 import { getApiBaseUrl, getApiEndpointBase } from '../../src/utils/apiBaseUrl';
 import ContactManagerTab from './ContactManagerTab';
 import InfoAccessManagerTab from './InfoAccessManagerTab';
@@ -274,6 +274,10 @@ const HistoryPageTab: React.FC = () => {
         const valueToSave = content[field];
         
         if (field === 'history-main-image') {
+          if (!apiService.isAuthenticated()) {
+            alert('Please log in to the CMS before saving the image.');
+            return;
+          }
           // Handle image using the images API
           const urlParts = (valueToSave as string).split('/');
           const filename = urlParts[urlParts.length - 1] || 'history-image.jpg';
@@ -298,9 +302,13 @@ const HistoryPageTab: React.FC = () => {
         }
         
         alert(`${field} saved successfully!`);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to save content:', error);
-        alert('Failed to save content. Please try again.');
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          alert('Authorization required. Please log in to the CMS and try again.');
+        } else {
+          alert('Failed to save content. Please try again.');
+        }
       }
     };
   
@@ -688,6 +696,10 @@ const HistoryPageTab: React.FC = () => {
   
     const handleTeamPhotoSelect = async (imageUrl: string, filename: string) => {
       try {
+        if (!apiService.isAuthenticated()) {
+          alert('Please log in to the CMS before saving the team photo.');
+          return;
+        }
         // Save the team group photo using the image mapping system
         await apiService.setImageMapping('team-group-photo', {
           filename: filename,
@@ -703,7 +715,11 @@ const HistoryPageTab: React.FC = () => {
         alert(t.cms.schoolTeam.teamPhoto.photoUpdated);
       } catch (error: any) {
         console.error('❌ Failed to save team photo:', error);
-        alert(`Failed to save team photo: ${error.message || 'Please try again.'}`);
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          alert('Authorization required. Please log in to the CMS and try again.');
+        } else {
+          alert(`Failed to save team photo: ${error.message || 'Please try again.'}`);
+        }
       }
       setShowTeamPhotoManager(false);
     };
