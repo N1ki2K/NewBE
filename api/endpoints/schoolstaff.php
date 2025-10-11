@@ -476,14 +476,6 @@ class SchoolStaffEndpoints {
         return $hasTable;
     }
 
-    private function ensureSchema() {
-        if ($this->columnExists('image_filename') || $this->columnExists('image_url')) {
-            return;
-        }
-
-        $this->hasStaffImagesTable();
-    }
-
     private function ensureIsDirectorColumn() {
         $columnAdded = false;
         if (!$this->columnExists('is_director')) {
@@ -505,6 +497,8 @@ class SchoolStaffEndpoints {
 
     private function ensureSchema() {
         $this->ensureIsDirectorColumn();
-        $this->hasStaffImagesTable();
+        if (!$this->columnExists('image_filename') && !$this->columnExists('image_url')) {
+            $this->hasStaffImagesTable();
+        }
     }
 }
