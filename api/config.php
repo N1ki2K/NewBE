@@ -143,13 +143,12 @@ if ($backendPublicEnv !== false && $backendPublicEnv !== '') {
 
 define('BACKEND_PUBLIC_PATH', $backendPublicPath);
 
-$uploadPublicBase = ($backendPublicPath === '' ? '' : $backendPublicPath) . '/uploads';
-$customPicturesPublicPath = '/public/uplods/images';
-$uploadPicturesPublicPath = $customPicturesPublicPath;
-$uploadDocumentsPublicPath = $uploadPublicBase . '/documents';
-$uploadPresentationsPublicPath = $uploadPublicBase . '/presentations';
+$publicUploadsBase = '/public/uploads';
+$uploadPicturesPublicPath = $publicUploadsBase . '/pictures';
+$uploadDocumentsPublicPath = $publicUploadsBase . '/documents';
+$uploadPresentationsPublicPath = $publicUploadsBase . '/presentations';
 
-define('UPLOAD_PUBLIC_BASE', $uploadPublicBase);
+define('UPLOAD_PUBLIC_BASE', $publicUploadsBase);
 define('UPLOAD_PICTURES_PUBLIC_PATH', $uploadPicturesPublicPath);
 define('UPLOAD_DOCUMENTS_PUBLIC_PATH', $uploadDocumentsPublicPath);
 define('UPLOAD_PRESENTATIONS_PUBLIC_PATH', $uploadPresentationsPublicPath);
@@ -173,12 +172,12 @@ if (!function_exists('get_allowed_origins')) {
 
 // Upload Configuration
 $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : dirname(__DIR__);
-$customPicturesDir = $documentRoot . '/public/uplods/images/';
+$customUploadBaseDir = $documentRoot . '/public/uploads/';
 
-define('UPLOAD_DIR', dirname(__DIR__) . '/public/uploads/');
-define('UPLOAD_PICTURES_DIR', $customPicturesDir);
-define('UPLOAD_DOCUMENTS_DIR', UPLOAD_DIR . 'documents/');
-define('UPLOAD_PRESENTATIONS_DIR', UPLOAD_DIR . 'presentations/');
+define('UPLOAD_DIR', $customUploadBaseDir);
+define('UPLOAD_PICTURES_DIR', $customUploadBaseDir . 'pictures/');
+define('UPLOAD_DOCUMENTS_DIR', $customUploadBaseDir . 'documents/');
+define('UPLOAD_PRESENTATIONS_DIR', $customUploadBaseDir . 'presentations/');
 define('UPLOAD_MAX_SIZE', 10 * 1024 * 1024); // 10MB
 
 // Allowed file types (compatibility helpers)
