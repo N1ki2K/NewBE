@@ -789,7 +789,7 @@ const HistoryPageTab: React.FC = () => {
               <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
                 {staffImages[member.id] ? (
                   <img 
-                    src={`${apiBaseUrl}${staffImages[member.id].image_url}`}
+                    src={resolveMediaUrl(staffImages[member.id].image_url)}
                     alt={staffImages[member.id].alt_text || member.name} 
                     className="w-full h-full object-cover"
                     onError={(e) => {
@@ -886,7 +886,7 @@ const HistoryPageTab: React.FC = () => {
                     <div className="w-16 h-16 bg-gray-200 rounded-full overflow-hidden">
                       {staffImages[editingMember.id] ? (
                         <img 
-                          src={`${apiBaseUrl}${staffImages[editingMember.id].image_url}`}
+                          src={resolveMediaUrl(staffImages[editingMember.id].image_url)}
                           alt="Preview" 
                           className="w-full h-full object-cover"
                         />
@@ -2572,7 +2572,7 @@ const HistoryPageTab: React.FC = () => {
                       {formData.featured_image_url && (
                         <div className="flex items-center space-x-2">
                           <img
-                            src={`${apiBaseUrl}${formData.featured_image_url}`}
+                            src={resolveMediaUrl(formData.featured_image_url)}
                             alt="Featured"
                             className="w-16 h-16 object-cover rounded"
                           />
