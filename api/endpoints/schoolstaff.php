@@ -193,6 +193,7 @@ class SchoolStaffEndpoints {
             'image_filename' => isset($input['image_filename']) ? $input['image_filename'] : null,
             'image_url' => isset($input['image_url']) ? $input['image_url'] : null,
             'image_alt_text' => isset($input['alt_text']) ? $input['alt_text'] : null,
+            'is_director' => isset($input['is_director']) ? (int)!!$input['is_director'] : 0,
             'is_active' => isset($input['is_active']) ? (int)!!$input['is_active'] : 1
         );
 
@@ -228,6 +229,7 @@ class SchoolStaffEndpoints {
             'image_filename' => array_key_exists('image_filename', $input) ? $input['image_filename'] : null,
             'image_url' => array_key_exists('image_url', $input) ? $input['image_url'] : null,
             'image_alt_text' => array_key_exists('alt_text', $input) ? $input['alt_text'] : null,
+            'is_director' => array_key_exists('is_director', $input) ? (int)!!$input['is_director'] : null,
             'is_active' => array_key_exists('is_active', $input) ? (int)!!$input['is_active'] : null
         );
 
@@ -401,6 +403,7 @@ class SchoolStaffEndpoints {
             'image_filename' => isset($row['image_filename']) ? $row['image_filename'] : null,
             'image_url' => isset($row['image_url']) ? $row['image_url'] : null,
             'alt_text' => isset($row['image_alt_text']) ? $row['image_alt_text'] : (isset($row['alt_text']) ? $row['alt_text'] : null),
+            'is_director' => isset($row['is_director']) ? (bool)$row['is_director'] : false,
             'is_active' => isset($row['is_active']) ? (bool)$row['is_active'] : true
         );
     }
@@ -478,6 +481,30 @@ class SchoolStaffEndpoints {
             return;
         }
 
+        $this->hasStaffImagesTable();
+    }
+
+    private function ensureIsDirectorColumn() {
+        $columnAdded = false;
+        if (!$this->columnExists('is_director')) {
+            $this->db->query(
+                "ALTER TABLE school_staff ADD COLUMN is_director TINYINT(1) NOT NULL DEFAULT 0 AFTER phone"
+            );
+            $this->columns = null;
+            $columnAdded = true;
+        }
+
+        $indexCount = $this->db->fetchColumn(
+            "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'school_staff' AND index_name = 'idx_is_director'"
+        );
+
+        if ((int)$indexCount === 0 && ($columnAdded || $this->columnExists('is_director'))) {
+            $this->db->query("CREATE INDEX idx_is_director ON school_staff (is_director)");
+        }
+    }
+
+    private function ensureSchema() {
+        $this->ensureIsDirectorColumn();
         $this->hasStaffImagesTable();
     }
 }
