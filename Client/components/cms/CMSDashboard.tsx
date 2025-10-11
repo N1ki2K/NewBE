@@ -40,10 +40,15 @@ const resolveMediaUrl = (url?: string | null, baseUrl: string = API_BASE_URL) =>
 };
 
 interface InternalImagePickerProps extends ImagePickerProps {
-  resolveUrl: (url: string) => string;
+  resolveUrl?: (url: string) => string;
 }
 
-const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, currentImage, onClose, resolveUrl }) => {
+const ImagePicker: React.FC<InternalImagePickerProps> = ({
+  onImageSelect,
+  currentImage,
+  onClose,
+  resolveUrl = resolveMediaUrl,
+}) => {
   const { t } = useLanguage();
   const [picturesImages, setPicturesImages] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,10 +114,8 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({ onImageSelect, curren
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
             {filteredImages.map((image) => {
-              const imageUrl = `${apiBaseUrl}${image.url}`;
-              const isSelected = currentImage === imageUrl || currentImage === image.url;
-              
               const previewUrl = resolveUrl(image.url);
+              const isSelected = currentImage === previewUrl || currentImage === image.url;
               return (
                 <div 
                   key={image.filename} 
