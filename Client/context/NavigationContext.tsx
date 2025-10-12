@@ -37,13 +37,9 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [documentAutoItems, setDocumentAutoItems] = useState<NavItem[]>([]);
 
   // Fallback navigation for when API fails or is loading
-  const getFallbackNavigation = (
-    getTranslation: (key: string, fallback?: string) => string,
-    documentChildren: NavItem[] = []
-  ): NavItem[] => [
+  const getFallbackNavigation = (getTranslation: (key: string, fallback?: string) => string): NavItem[] => [
     { label: getTranslation('nav.home', 'Home'), path: '/' },
     {
       label: getTranslation('nav.school.title', 'School'),
@@ -59,7 +55,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     {
       label: getTranslation('nav.documents.title', 'Documents'),
       path: '/documents',
-      children: documentChildren
+      children: []
     },
     { label: getTranslation('nav.gallery', 'Gallery'), path: '/gallery' },
     {
@@ -160,47 +156,16 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
       .filter((item) => item.label && item.path);
   };
 
-  const formatDocumentLabel = (filename: string): string => {
-    const withoutExtension = filename.replace(/\.[^.]+$/, '');
-    const cleaned = withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-    if (!cleaned) {
-      return filename;
-    }
-    return cleaned
-      .toLowerCase()
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  const buildDocumentLinks = (documents: any[] = []): NavItem[] => {
-    return documents
-      .filter(doc => doc && typeof doc.filename === 'string' && doc.filename.trim() !== '')
-      .map(doc => {
-        const filename = doc.filename.trim();
-        return {
-          label: doc.originalName
-            ? doc.originalName
-            : formatDocumentLabel(filename),
-          path: `/documents/embed/${encodeURIComponent(filename)}`
-        };
-      });
-  };
-
   const loadNavigation = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       // Load pages and dynamic navigation items
-      const [pages, headerNav, documentsResponse] = await Promise.all([
+      const [pages, headerNav] = await Promise.all([
         apiService.getPages(),
-        apiService.getHeaderNavigation(),
-        apiService.getDocuments().catch(() => ({ documents: [] }))
+        apiService.getHeaderNavigation()
       ]);
-
-      const autoDocumentLinks = buildDocumentLinks(documentsResponse?.documents);
-      setDocumentAutoItems(autoDocumentLinks);
       
       // Build navigation structure combining pages with dynamic navigation items
       const buildNavigation = (pages: PageData[], dynamicNavItems: any[]): NavItem[] => {
@@ -218,19 +183,10 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
             if (pageId === 'documents') {
               // Use dynamic navigation items for documents
               const documentsNav = dynamicNavItems.find(item => item.id === 'documents');
-              const manualChildren = convertDynamicChildren(documentsNav?.children);
-              const mergedChildren = [...manualChildren];
-
-              autoDocumentLinks.forEach(link => {
-                if (!mergedChildren.some(child => child.path === link.path)) {
-                  mergedChildren.push(link);
-                }
-              });
-
               navItem = {
                 label: getTranslatedLabel(page.id, page.name),
                 path: page.path,
-                children: mergedChildren
+                children: convertDynamicChildren(documentsNav?.children)
               };
             } else if (pageId === 'projects') {
               // Use dynamic navigation items for projects
@@ -262,7 +218,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     } catch (err) {
       console.warn('Failed to load dynamic navigation, using fallback:', err);
       setError('Failed to load navigation');
-      setNavItems(getFallbackNavigation(getTranslation, documentAutoItems));
+      setNavItems(getFallbackNavigation(getTranslation));
     } finally {
       setIsLoading(false);
     }
@@ -276,7 +232,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     loadNavigation();
   }, [t]); // Reload when language changes
 
-  const finalNavItems = navItems.length > 0 ? navItems : getFallbackNavigation(getTranslation, documentAutoItems);
+  const finalNavItems = navItems.length > 0 ? navItems : getFallbackNavigation(getTranslation);
   
   // Debug logging
   console.log('🧭 Navigation Debug:', {
