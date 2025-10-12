@@ -7,7 +7,6 @@ class NavigationEndpoints {
     public function __construct() {
         $this->db = Database::getInstance();
         $this->ensureSchema();
-        $this->seedDefaultItems();
         $this->hasTable = $this->tableExists('navigation_menu_items');
     }
 
@@ -314,20 +313,19 @@ class NavigationEndpoints {
 
     private function tableExists($table) {
         try {
-            $result = $this->db->fetchOne("SHOW TABLES LIKE ?", [$table]);
-            return !empty($result);
+            $count = $this->db->fetchColumn(
+                "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+                [$table]
+            );
+            return ((int) $count) > 0;
         } catch (Exception $e) {
             return false;
         }
     }
 
     private function ensureSchema() {
-        if ($this->tableExists('navigation_menu_items')) {
-            return;
-        }
-
         $this->db->query(
-            "CREATE TABLE navigation_menu_items (
+            "CREATE TABLE IF NOT EXISTS navigation_menu_items (
                 id VARCHAR(191) NOT NULL PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 path VARCHAR(500) NOT NULL,
