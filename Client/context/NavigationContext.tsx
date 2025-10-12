@@ -119,6 +119,43 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     };
   };
 
+  const normalizeDynamicItem = (item: any): NavItem => {
+    const label =
+      typeof item?.label === 'string' && item.label.trim().length > 0
+        ? item.label.trim()
+        : typeof item?.title === 'string' && item.title.trim().length > 0
+          ? item.title.trim()
+          : getTranslation('nav.untitled', 'Untitled');
+
+    const path =
+      typeof item?.path === 'string' && item.path.trim().length > 0
+        ? item.path
+        : '#';
+
+    const children = Array.isArray(item?.children)
+      ? item.children
+          .filter(Boolean)
+          .map(normalizeDynamicItem)
+          .filter((child) => child.label && child.path)
+      : [];
+
+    return {
+      label,
+      path,
+      ...(children.length > 0 ? { children } : {})
+    };
+  };
+
+  const convertDynamicChildren = (items: any[] | undefined): NavItem[] => {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items
+      .filter(Boolean)
+      .map(normalizeDynamicItem)
+      .filter((item) => item.label && item.path);
+  };
+
   const loadNavigation = async () => {
     try {
       setIsLoading(true);
@@ -149,7 +186,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
               navItem = {
                 label: getTranslatedLabel(page.id, page.name),
                 path: page.path,
-                children: documentsNav?.children || []
+                children: convertDynamicChildren(documentsNav?.children)
               };
             } else if (pageId === 'projects') {
               // Use dynamic navigation items for projects
@@ -157,7 +194,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
               navItem = {
                 label: getTranslatedLabel(page.id, page.name),
                 path: page.path,
-                children: projectsNav?.children || []
+                children: convertDynamicChildren(projectsNav?.children)
               };
             } else {
               // Use the already-structured children from backend
