@@ -1685,17 +1685,18 @@ const HistoryPageTab: React.FC = () => {
   };
   
   const DocumentManagerTab: React.FC = () => {
-    const { t } = useLanguage();
-    const { isLoading, error } = useCMS();
-    const [documents, setDocuments] = useState<any[]>([]);
-    const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
-    const [isUploading, setIsUploading] = useState(false);
-    const { confirm } = useConfirm();
-  
-    // Load documents from Documents folder
-    useEffect(() => {
-      loadDocuments();
-    }, []);
+  const { t } = useLanguage();
+  const { isLoading, error } = useCMS();
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const { confirm } = useConfirm();
+  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+
+  // Load documents from Documents folder
+  useEffect(() => {
+    loadDocuments();
+  }, []);
   
     const loadDocuments = async () => {
       try {
