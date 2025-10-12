@@ -6,6 +6,8 @@ class NavigationEndpoints {
 
     public function __construct() {
         $this->db = Database::getInstance();
+        $this->ensureSchema();
+        $this->seedDefaultItems();
         $this->hasTable = $this->tableExists('navigation_menu_items');
     }
 
@@ -68,11 +70,13 @@ class NavigationEndpoints {
 
     private function handleHeaderMenu() {
         if ($this->hasTable) {
-            $items = $this->db->fetchAll(
+            $rows = $this->db->fetchAll(
                 "SELECT * FROM navigation_menu_items ORDER BY position ASC, title ASC"
             );
-            $items = $items ? $items : [];
-            $tree = $this->buildTree($items);
+            $rows = $rows ? $rows : [];
+            $items = array_map([$this, 'formatMenuItem'], $rows);
+            $items = array_values(array_filter($items));
+            $tree = $this->buildTree($items, true);
             jsonResponse(['navigation' => $tree]);
             return;
         }
@@ -118,13 +122,17 @@ class NavigationEndpoints {
     }
 
     private function listMenuItems() {
-        $items = $this->db->fetchAll(
+        $rows = $this->db->fetchAll(
             "SELECT * FROM navigation_menu_items ORDER BY position ASC, title ASC"
         );
-        $items = $items ? $items : [];
+        $rows = $rows ? $rows : [];
+        $items = array_map([$this, 'formatMenuItem'], $rows);
+        $items = array_values(array_filter($items));
+        $tree = $this->buildTree($items, false);
 
         jsonResponse([
             'items' => $items,
+            'tree' => $tree,
             'total' => count($items)
         ]);
     }
@@ -156,12 +164,16 @@ class NavigationEndpoints {
             'css_class' => isset($input['cssClass']) ? $input['cssClass'] : null
         ]);
 
-        $item = $this->db->fetchOne(
+        $row = $this->db->fetchOne(
             "SELECT * FROM navigation_menu_items WHERE id = ?",
             [$id]
         );
 
-        jsonResponse($item, 201);
+        if (!$row) {
+            errorResponse('Failed to load created navigation item', 500);
+        }
+
+        jsonResponse(['item' => $this->formatMenuItem($row)], 201);
     }
 
     private function updateMenuItem($id) {
@@ -204,7 +216,7 @@ class NavigationEndpoints {
         }
 
         if (empty($data)) {
-            jsonResponse($existing);
+            jsonResponse(['item' => $this->formatMenuItem($existing)]);
         }
 
         $this->db->update(
@@ -214,12 +226,16 @@ class NavigationEndpoints {
             ['id' => $id]
         );
 
-        $item = $this->db->fetchOne(
+        $row = $this->db->fetchOne(
             "SELECT * FROM navigation_menu_items WHERE id = ?",
             [$id]
         );
 
-        jsonResponse($item);
+        if (!$row) {
+            errorResponse('Navigation item not found', 404);
+        }
+
+        jsonResponse(['item' => $this->formatMenuItem($row)]);
     }
 
     private function toggleMenuItem($id) {
@@ -241,7 +257,7 @@ class NavigationEndpoints {
             ['id' => $id]
         );
 
-        jsonResponse(['id' => $id, 'is_active' => (bool)$newStatus]);
+        jsonResponse(['id' => $id, 'isActive' => (bool)$newStatus]);
     }
 
     private function deleteMenuItem($id) {
@@ -255,34 +271,45 @@ class NavigationEndpoints {
             errorResponse('Navigation item not found', 404);
         }
 
+        $this->seedDefaultItems();
+
         jsonResponse(['message' => 'Navigation item deleted successfully']);
     }
 
-    private function buildTree($items) {
+    private function buildTree(array &$items, $skipInactive = false) {
         $indexed = [];
-        foreach ($items as $item) {
-            $item['children'] = [];
-            $indexed[$item['id']] = $item;
+        foreach ($items as &$item) {
+            if (!isset($item['children']) || !is_array($item['children'])) {
+                $item['children'] = [];
+            }
+            $indexed[$item['id']] = &$item;
         }
+        unset($item);
 
         $tree = [];
         foreach ($indexed as $id => &$item) {
-            if (isset($item['is_active']) && !(int)$item['is_active']) {
+            if ($skipInactive && isset($item['isActive']) && !$item['isActive']) {
                 continue;
             }
 
-            $parentId = isset($item['parent_id']) ? $item['parent_id'] : null;
+            $parentId = isset($item['parentId']) ? $item['parentId'] : null;
             if ($parentId && isset($indexed[$parentId])) {
                 $indexed[$parentId]['children'][] = &$item;
             } else {
                 $tree[] = &$item;
             }
         }
-
-        // Remove references
         unset($item);
 
-        return $tree;
+        // Remove references
+        foreach ($indexed as &$linked) {
+            if (isset($linked['children'])) {
+                $linked['children'] = array_values($linked['children']);
+            }
+        }
+        unset($linked);
+
+        return array_values($tree);
     }
 
     private function tableExists($table) {
@@ -292,5 +319,93 @@ class NavigationEndpoints {
         } catch (Exception $e) {
             return false;
         }
+    }
+
+    private function ensureSchema() {
+        if ($this->tableExists('navigation_menu_items')) {
+            return;
+        }
+
+        $this->db->query(
+            "CREATE TABLE navigation_menu_items (
+                id VARCHAR(191) NOT NULL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                path VARCHAR(500) NOT NULL,
+                parent_id VARCHAR(191) NULL,
+                position INT NOT NULL DEFAULT 0,
+                is_active TINYINT(1) NOT NULL DEFAULT 1,
+                icon VARCHAR(100) NULL,
+                css_class VARCHAR(100) NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_parent (parent_id),
+                INDEX idx_position (position),
+                INDEX idx_active (is_active)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+
+        $this->seedDefaultItems();
+    }
+
+    private function seedDefaultItems() {
+        $defaults = [
+            [
+                'id' => 'documents',
+                'title' => 'Documents',
+                'path' => '/documents',
+                'position' => 20,
+            ],
+            [
+                'id' => 'projects',
+                'title' => 'Projects',
+                'path' => '/projects',
+                'position' => 30,
+            ],
+        ];
+
+        foreach ($defaults as $item) {
+            $exists = $this->db->fetchOne(
+                "SELECT id FROM navigation_menu_items WHERE id = ?",
+                [$item['id']]
+            );
+
+            if (!$exists) {
+                $this->db->insert('navigation_menu_items', [
+                    'id' => $item['id'],
+                    'title' => $item['title'],
+                    'path' => $item['path'],
+                    'parent_id' => null,
+                    'position' => $item['position'],
+                    'is_active' => 1,
+                    'icon' => null,
+                    'css_class' => null
+                ]);
+            }
+        }
+    }
+
+    private function formatMenuItem($row) {
+        if (!$row) {
+            return null;
+        }
+
+        $item = [
+            'id' => isset($row['id']) ? (string)$row['id'] : uniqid('nav_', true),
+            'title' => isset($row['title']) ? $row['title'] : '',
+            'path' => isset($row['path']) ? $row['path'] : '/',
+            'parentId' => isset($row['parent_id']) && $row['parent_id'] !== '' ? (string)$row['parent_id'] : null,
+            'position' => isset($row['position']) ? (int)$row['position'] : 0,
+            'isActive' => isset($row['is_active']) ? (bool)$row['is_active'] : true,
+            'icon' => isset($row['icon']) ? $row['icon'] : null,
+            'cssClass' => isset($row['css_class']) ? $row['css_class'] : null,
+        ];
+
+        if (isset($row['children']) && is_array($row['children'])) {
+            $item['children'] = array_map([$this, 'formatMenuItem'], $row['children']);
+        } else {
+            $item['children'] = isset($row['children']) ? $row['children'] : [];
+        }
+
+        return $item;
     }
 }
