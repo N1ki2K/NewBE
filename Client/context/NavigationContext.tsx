@@ -55,15 +55,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     {
       label: getTranslation('nav.documents.title', 'Documents'),
       path: '/documents',
-      children: [
-        { label: getTranslation('nav.documents.budget', 'Budget Reports'), path: '/documents/budget' },
-        { label: getTranslation('nav.documents.rules', 'Rules and Plans'), path: '/documents/rules' },
-        { label: getTranslation('nav.documents.admissions', 'Admissions'), path: '/documents/admissions' },
-        { label: getTranslation('nav.documents.calendar', 'Calendar'), path: '/documents/calendar' },
-        { label: getTranslation('nav.documents.schedules', 'Schedules'), path: '/documents/schedules' },
-        { label: getTranslation('nav.documents.students', 'Students'), path: '/documents/students' },
-        { label: getTranslation('nav.documents.olympiads', 'Olympiads'), path: '/documents/olympiads' },
-      ]
+      children: []
     },
     { label: getTranslation('nav.gallery', 'Gallery'), path: '/gallery' },
     {
