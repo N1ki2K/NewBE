@@ -2199,6 +2199,7 @@ const HistoryPageTab: React.FC = () => {
     const [attachments, setAttachments] = useState<any[]>([]);
     const [isUploadingFile, setIsUploadingFile] = useState(false);
     const { confirm } = useConfirm();
+    const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
   
     // Form state
     const [formData, setFormData] = useState({
