@@ -856,7 +856,7 @@ historyPage: {
         title: 'Upload Instructions:',
         steps: [
           'Upload images in JPG, PNG, or WebP format.',
-          'Maximum file size: 5MB per image.',
+          'Maximum file size: 500MB per image.',
           'Images will be optimized automatically.',
           'Use descriptive filenames for better organization.',
           'Add alt text for accessibility and SEO.'
@@ -889,7 +889,7 @@ historyPage: {
       actions: 'Actions',
       description: 'Upload and manage all images in the Pictures folder. These images can then be used throughout the website.',
       uploadText: 'Click to upload images or drag and drop',
-      uploadSupports: 'Supports: JPG, PNG, GIF, WebP, SVG (Max: 5MB each)',
+      uploadSupports: 'Supports: JPG, PNG, GIF, WebP, SVG (Max: 500MB each)',
       sizeGuidelines: 'Image Size Guidelines:',
       profilePictures: 'Profile Pictures: 300×300 pixels (square) - for team member photos',
       galleryImages: 'Gallery Images: 600×400 pixels (landscape) - for photo gallery',

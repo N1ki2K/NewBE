@@ -186,7 +186,7 @@ define('UPLOAD_DIR', $customUploadBaseDir);
 define('UPLOAD_PICTURES_DIR', $customUploadBaseDir . 'pictures/');
 define('UPLOAD_DOCUMENTS_DIR', $customUploadBaseDir . 'documents/');
 define('UPLOAD_PRESENTATIONS_DIR', $customUploadBaseDir . 'presentations/');
-define('UPLOAD_MAX_SIZE', 10 * 1024 * 1024); // 10MB
+define('UPLOAD_MAX_SIZE', 500 * 1024 * 1024); // 500MB
 
 // Allowed file types (compatibility helpers)
 if (!function_exists('get_allowed_image_types')) {
