@@ -49,14 +49,19 @@ const CalendarManagerTab: React.FC = () => {
 
   useEffect(() => {
     loadEvents();
-  }, []);
+  }, [locale]);
 
   const loadEvents = async () => {
     try {
       setIsLoading(true);
-      const response = await apiService.getEvents();
-      // Ensure response is an array before setting
-      setEvents(Array.isArray(response) ? response : []);
+      const response = await apiService.getEvents(locale);
+      const fetched = Array.isArray(response) ? response : [];
+      const sorted = [...fetched].sort((a, b) => {
+        const dateA = new Date(`${a.date?.split('T')[0] || ''}T${(a.startTime || '00:00').substring(0, 5)}`);
+        const dateB = new Date(`${b.date?.split('T')[0] || ''}T${(b.startTime || '00:00').substring(0, 5)}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+      setEvents(sorted);
     } catch (error) {
       console.error('Failed to load events:', error);
       setEvents([]); // Set to empty array on error
