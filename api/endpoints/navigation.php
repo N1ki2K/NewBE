@@ -76,6 +76,7 @@ class NavigationEndpoints {
             $items = array_map([$this, 'formatMenuItem'], $rows);
             $items = array_values(array_filter($items));
             $tree = $this->buildTree($items, true);
+            $this->injectDocumentsFromFilesystem($tree);
             jsonResponse(['navigation' => $tree]);
             return;
         }
@@ -117,6 +118,7 @@ class NavigationEndpoints {
             ];
         }
 
+        $this->injectDocumentsFromFilesystem($navigation);
         jsonResponse(['navigation' => $navigation]);
     }
 
@@ -405,5 +407,96 @@ class NavigationEndpoints {
         }
 
         return $item;
+    }
+
+    private function injectDocumentsFromFilesystem(array &$navigation): void {
+        $documentsChildren = $this->getDocumentsFromFilesystem();
+        if (empty($documentsChildren)) {
+            return;
+        }
+
+        $found = false;
+        foreach ($navigation as &$item) {
+            if (isset($item['id']) && $item['id'] === 'documents') {
+                $item['children'] = $documentsChildren;
+                $found = true;
+                break;
+            }
+        }
+        unset($item);
+
+        if (!$found) {
+            $navigation[] = [
+                'id' => 'documents',
+                'title' => 'Documents',
+                'path' => '/documents',
+                'position' => 20,
+                'isActive' => true,
+                'children' => $documentsChildren
+            ];
+        }
+
+        usort($navigation, function ($a, $b) {
+            $posA = isset($a['position']) ? (int)$a['position'] : 0;
+            $posB = isset($b['position']) ? (int)$b['position'] : 0;
+            if ($posA === $posB) {
+                return strcmp($a['title'] ?? '', $b['title'] ?? '');
+            }
+            return $posA - $posB;
+        });
+    }
+
+    private function getDocumentsFromFilesystem(): array {
+        if (!defined('UPLOAD_DOCUMENTS_DIR') || !defined('UPLOAD_DOCUMENTS_PUBLIC_PATH')) {
+            return [];
+        }
+
+        $dir = UPLOAD_DOCUMENTS_DIR;
+        if (!is_dir($dir)) {
+            return [];
+        }
+
+        $files = glob($dir . '*');
+        if (!$files) {
+            return [];
+        }
+
+        $items = [];
+        $position = 1;
+
+        foreach ($files as $filePath) {
+            if (!is_file($filePath)) {
+                continue;
+            }
+
+            $filename = basename($filePath);
+            $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            $encoded = rawurlencode($filename);
+
+            if ($extension !== 'pdf') {
+                continue;
+            }
+
+            $path = '/documents/embed/' . $encoded;
+
+            $items[] = [
+                'id' => 'doc-' . md5($filename),
+                'title' => $this->humanizeFilename($filename),
+                'path' => $path,
+                'parentId' => 'documents',
+                'position' => $position++,
+                'isActive' => true,
+                'children' => []
+            ];
+        }
+
+        return $items;
+    }
+
+    private function humanizeFilename(string $filename): string {
+        $name = preg_replace('/\.[^\.]+$/', '', $filename);
+        $name = str_replace(['_', '-'], ' ', $name);
+        $name = preg_replace('/\s+/', ' ', $name);
+        return ucwords(trim($name));
     }
 }

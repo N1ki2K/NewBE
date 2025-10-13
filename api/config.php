@@ -152,8 +152,9 @@ if ($backendPublicEnv !== false && $backendPublicEnv !== '') {
 define('BACKEND_PUBLIC_PATH', $backendPublicPath);
 
 $publicUploadsBase = '/public/uploads';
+$documentsPublicPath = '/public/documents';
 $uploadPicturesPublicPath = $publicUploadsBase . '/pictures';
-$uploadDocumentsPublicPath = $publicUploadsBase . '/documents';
+$uploadDocumentsPublicPath = $documentsPublicPath;
 $uploadPresentationsPublicPath = $publicUploadsBase . '/presentations';
 
 define('UPLOAD_PUBLIC_BASE', $publicUploadsBase);
@@ -181,10 +182,11 @@ if (!function_exists('get_allowed_origins')) {
 // Upload Configuration
 $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : dirname(__DIR__);
 $customUploadBaseDir = $documentRoot . '/public/uploads/';
+$documentsBaseDir = $documentRoot . '/public/documents/';
 
 define('UPLOAD_DIR', $customUploadBaseDir);
 define('UPLOAD_PICTURES_DIR', $customUploadBaseDir . 'pictures/');
-define('UPLOAD_DOCUMENTS_DIR', $customUploadBaseDir . 'documents/');
+define('UPLOAD_DOCUMENTS_DIR', $documentsBaseDir);
 define('UPLOAD_PRESENTATIONS_DIR', $customUploadBaseDir . 'presentations/');
 define('UPLOAD_MAX_SIZE', 500 * 1024 * 1024); // 500MB
 

@@ -1535,6 +1535,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
   const MediaManagerTab: React.FC<MediaManagerTabProps> = ({ isActive }) => {
     const { t } = useLanguage();
     const { isLoading, error } = useCMS();
+    const { reloadNavigation } = useNavigationContext();
     const [picturesImages, setPicturesImages] = useState<any[]>([]);
     const [isLoadingImages, setIsLoadingImages] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
@@ -1761,232 +1762,70 @@ const sortGalleryImageList = (images: any[]): any[] => {
   };
   
   const DocumentManagerTab: React.FC = () => {
-  const { t } = useLanguage();
-  const { isLoading, error } = useCMS();
-  const { reloadNavigation } = useNavigationContext();
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
-  const [documentsMenuItems, setDocumentsMenuItems] = useState<any[]>([]);
-  const { confirm } = useConfirm();
-  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+    const { t } = useLanguage();
+    const { isLoading, error } = useCMS();
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
+    const [isUploading, setIsUploading] = useState(false);
+    const { confirm } = useConfirm();
 
-  useEffect(() => {
-    loadDocuments();
-    loadDocumentsMenuItems();
-  }, []);
+    useEffect(() => {
+      loadDocuments();
+    }, []);
 
-  const flattenDocumentsMenuItems = (items: any[]): any[] => {
-    const result: any[] = [];
-    const traverse = (nodes: any[]) => {
-      if (!Array.isArray(nodes)) return;
-      nodes.forEach((node) => {
-        if (!node) return;
-        result.push(node);
-        if (Array.isArray(node.children) && node.children.length > 0) {
-          traverse(node.children);
-        }
-      });
-    };
-    traverse(items);
-    return result;
-  };
-
-  const sortMenuItemsByPosition = (items: any[]): any[] => {
-    return [...items].sort((a, b) => {
-      const posA = typeof a?.position === 'number' ? a.position : 0;
-      const posB = typeof b?.position === 'number' ? b.position : 0;
-      if (posA === posB) {
-        return (a?.title || '').localeCompare(b?.title || '');
-      }
-      return posA - posB;
-    });
-  };
-
-  const loadDocumentsMenuItems = async () => {
-    try {
-      const response = await apiService.getNavigationMenuItems();
-      const findNode = (nodes: any[], id: string): any | null => {
-        for (const node of nodes || []) {
-          if (!node) continue;
-          if (node.id === id) return node;
-          if (Array.isArray(node.children) && node.children.length > 0) {
-            const found = findNode(node.children, id);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const documentsNodeFromTree = findNode(response.tree || [], 'documents');
-      const directChildrenFromItems = (response.items || []).filter((item: any) => item?.parentId === 'documents');
-      const combinedChildren = documentsNodeFromTree?.children?.length
-        ? documentsNodeFromTree.children
-        : directChildrenFromItems;
-      setDocumentsMenuItems(combinedChildren || []);
-    } catch (navError) {
-      console.error('❌ Failed to load documents menu items:', navError);
-      setDocumentsMenuItems([]);
-    }
-  };
-
-  const getExistingDocumentPaths = () => {
-    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
-    const paths = new Set<string>();
-    flattened.forEach((item) => {
-      if (item?.path) {
-        paths.add(item.path);
-      }
-    });
-    return paths;
-  };
-
-  const getNextDocumentPosition = () => {
-    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
-    let maxPosition = 0;
-    flattened.forEach((item) => {
-      if (typeof item?.position === 'number' && item.position > maxPosition) {
-        maxPosition = item.position;
-      }
-    });
-    return maxPosition + 1;
-  };
-
-  const deriveTitleFromFilename = (filename: string, originalName?: string) => {
-    const source = originalName || filename;
-    const withoutExtension = source.replace(/\.[^/.]+$/, '');
-    const humanized = withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-    return humanized.length > 0 ? humanized : source;
-  };
-
-  const ensureDocumentMenuEntry = async (
-    filename: string,
-    originalName: string,
-    existingPaths: Set<string>,
-    nextPositionRef: { value: number }
-  ): Promise<boolean> => {
-    const encodedFilename = encodeURIComponent(filename);
-    const extension = filename.split('.').pop()?.toLowerCase() || '';
-
-    if (extension !== 'pdf') {
-      return false;
-    }
-
-    const path = `/documents/embed/${encodedFilename}`;
-
-    if (existingPaths.has(path)) {
-      return false;
-    }
-
-    try {
-      const response = await apiService.createNavigationMenuItem({
-        title: deriveTitleFromFilename(filename, originalName),
-        path,
-        position: nextPositionRef.value,
-        isActive: true,
-        parentId: 'documents'
-      });
-      existingPaths.add(path);
-      nextPositionRef.value += 1;
-      if (response?.item) {
-        setDocumentsMenuItems((prev) => sortMenuItemsByPosition([...prev, response.item]));
-      }
-      return true;
-    } catch (err) {
-      console.error('❌ Failed to create navigation menu item for document:', filename, err);
-      return false;
-    }
-  };
-
-  const removeDocumentMenuEntries = async (filename: string) => {
-    const encodedFilename = encodeURIComponent(filename);
-    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
-    const toRemove = flattened.filter(
-      (item) => typeof item?.path === 'string' && item.path.includes(encodedFilename)
-    );
-
-    if (toRemove.length === 0) {
-      return;
-    }
-
-    for (const item of toRemove) {
-      try {
-        await apiService.deleteNavigationMenuItem(item.id);
-      } catch (err) {
-        console.error('❌ Failed to delete navigation menu item:', item.id, err);
-      }
-    }
-
-    await loadDocumentsMenuItems();
-    await reloadNavigation();
-    if (toRemove.length > 0) {
-      setDocumentsMenuItems((prev) => {
-        const idsToRemove = new Set(toRemove.map((item) => item.id));
-        return prev.filter((item) => !idsToRemove.has(item.id));
-      });
-    }
-  };
-  
     const loadDocuments = async () => {
       try {
         setIsLoadingDocuments(true);
         const response = await apiService.getDocuments();
-        setDocuments(response.documents || []);
+        const docs = (response.documents || []).map((doc: any) => ({
+          ...doc,
+          type: determineDocumentType(doc.filename || doc.original_name || ''),
+        }));
+        setDocuments(docs);
       } catch (error) {
         console.error('❌ Failed to load Documents folder:', error);
       } finally {
         setIsLoadingDocuments(false);
       }
     };
-  
-  const handleFileUpload = async (files: FileList) => {
+
+    const handleFileUpload = async (files: FileList) => {
       const fileArray = Array.from(files);
       let successCount = 0;
       let errorCount = 0;
-      const existingPaths = getExistingDocumentPaths();
-      const nextPositionRef = { value: getNextDocumentPosition() };
-      let navigationUpdated = false;
-  
+
       setIsUploading(true);
-  
+
       for (const file of fileArray) {
         try {
           console.log(`📄 Uploading document: ${file.name}, size: ${file.size}, type: ${file.type}`);
           const result = await apiService.uploadDocument(file);
           console.log('✅ Document uploaded successfully:', result);
           successCount++;
-
-          const menuCreated = await ensureDocumentMenuEntry(
-            result.filename,
-            result.originalName || file.name,
-            existingPaths,
-            nextPositionRef
-          );
-          if (menuCreated) {
-            navigationUpdated = true;
-          }
         } catch (error: any) {
           console.error('❌ Failed to upload document:', error);
           errorCount++;
           alert(`Failed to upload ${file.name}: ${error.message || 'Please try again.'}`);
         }
       }
-  
+
       setIsUploading(false);
-  
+
       if (successCount > 0) {
         alert(t.cms.documentManager.uploadSuccess.replace('{count}', successCount.toString()));
         await loadDocuments();
-        if (navigationUpdated) {
-          await loadDocumentsMenuItems();
+        try {
           await reloadNavigation();
+        } catch (navError) {
+          console.error('❌ Failed to reload navigation:', navError);
         }
       }
-  
+
       if (errorCount > 0) {
         console.log(`⚠️ Upload completed with ${errorCount} errors out of ${fileArray.length} files`);
       }
     };
-  
+
     const handleDeleteDocument = async (filename: string) => {
       const confirmed = await confirm({
         title: 'Delete Document',
@@ -1995,16 +1834,20 @@ const sortGalleryImageList = (images: any[]): any[] => {
         cancelText: 'Cancel',
         isDangerous: true
       });
-  
+
       if (!confirmed) {
         return;
       }
-  
+
       try {
         await apiService.deleteDocument(filename);
-        await removeDocumentMenuEntries(filename);
         alert(t.cms.documentManager.deleteSuccess);
         await loadDocuments();
+        try {
+          await reloadNavigation();
+        } catch (navError) {
+          console.error('❌ Failed to reload navigation:', navError);
+        }
       } catch (error: any) {
         console.error('❌ Failed to delete document:', error);
         alert(t.cms.documentManager.deleteFailed.replace('{error}', error.message || 'Unknown error'));
@@ -2027,6 +1870,28 @@ const sortGalleryImageList = (images: any[]): any[] => {
       });
     };
   
+    const determineDocumentType = (filename: string): string => {
+      const extension = filename.split('.').pop()?.toLowerCase() || '';
+      switch (extension) {
+        case 'pdf':
+          return 'pdf';
+        case 'doc':
+        case 'docx':
+          return 'word';
+        case 'xls':
+        case 'xlsx':
+          return 'excel';
+        case 'ppt':
+        case 'pptx':
+          return 'powerpoint';
+        case 'txt':
+        case 'rtf':
+          return 'text';
+        default:
+          return 'other';
+      }
+    };
+
     const getDocumentIcon = (type: string): string => {
       switch (type) {
         case 'pdf': return '📄';
@@ -2144,8 +2009,8 @@ const sortGalleryImageList = (images: any[]): any[] => {
                     <p>{formatDate(document.modified)}</p>
                   </div>
                   <div className="flex justify-between items-center">
-                    <a
-                      href={`${apiBaseUrl}${document.url}`}
+                <a
+                      href={document.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:text-blue-800 p-1"
@@ -2157,8 +2022,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
                     </a>
                     <button
                       onClick={() => {
-                        const url = `${apiBaseUrl}${document.url}`;
-                        navigator.clipboard.writeText(url);
+                        navigator.clipboard.writeText(document.url);
                         alert('URL copied to clipboard!');
                       }}
                       className="text-gray-600 hover:text-gray-800 p-1"
