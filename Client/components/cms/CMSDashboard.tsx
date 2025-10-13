@@ -12,7 +12,7 @@ import ConfirmDialog from './ConfirmDialog';
 import { useConfirm } from '../../src/hooks/useConfirm'; // CORRECTED PATH
 import DocumentsMenuManagerTab from './DocumentsMenuManagerTab';
 import ProjectsMenuManagerTab from './ProjectsMenuManagerTab';
-import AchievementsDirectorsManager from './AchievementsDirectorsManager';
+// import AchievementsDirectorsManager from './AchievementsDirectorsManager';
 import useHealthCheck from '../../src/hooks/useHealthCheck'; // CORRECTED PATH
 
 // Reusable Image Picker Component for selecting from Pictures folder
@@ -179,352 +179,354 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({
   );
 };
 
-const HistoryPageTab: React.FC = () => {
-    const { getContent, updateContent, isLoading, error } = useCMS();
-    const { language: locale, t } = useLanguage(); // CORRECTED: use language as locale
-    const [content, setContent] = useState<any>({ // Changed to any to handle mixed types
-      'history-p1': '',
-      'history-p2': '',
-      'history-p3': '',
-      'history-p4': '',
-      'history-image-caption': '',
-      'achievements-title': '',
-      'achievements-list': [],
-      'directors-title': '',
-      'directors-list': [],
-      'history-main-image': ''
-    });
-  
-    const [showImagePicker, setShowImagePicker] = useState(false);
-    const [imagePreview, setImagePreview] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
-  
-    // Memoize content to prevent infinite loops
-    const loadedContent = useMemo(() => {
-      if (!t.historyPage) return {};
-      
-      return {
-        'history-p1': getContent(`history-p1_${locale}`, t.historyPage.p1 || ''),
-        'history-p2': getContent(`history-p2_${locale}`, t.historyPage.p2 || ''),
-        'history-p3': getContent(`history-p3_${locale}`, t.historyPage.p3 || ''),
-        'history-p4': getContent(`history-p4_${locale}`, t.historyPage.p4 || ''),
-        'history-image-caption': getContent(`history-image-caption_${locale}`, t.historyPage.imageCaption || ''),
-        'achievements-title': getContent(`achievements-title_${locale}`, t.historyPage.achievements?.title || ''),
-        'achievements-list': getContent(`achievements-list_${locale}`, [
-          t.historyPage.achievements?.list?.[0] || '',
-          t.historyPage.achievements?.list?.[1] || '',
-          t.historyPage.achievements?.list?.[2] || '',
-          t.historyPage.achievements?.list?.[3] || '',
-          t.historyPage.achievements?.list?.[4] || ''
-        ].filter(Boolean)),
-        'directors-title': getContent(`directors-title_${locale}`, t.historyPage.directors?.title || ''),
-        'directors-list': getContent(`directors-list_${locale}`, [
-          t.historyPage.directors?.list?.[0] || '',
-          t.historyPage.directors?.list?.[1] || '',
-          t.historyPage.directors?.list?.[2] || ''
-        ].filter(Boolean)),
-        'history-main-image': '' // Will be loaded separately from images table
-      };
-    }, [locale, t.historyPage, getContent]);
-  
-    useEffect(() => {
-      if (Object.keys(loadedContent).length > 0) {
-        setContent(loadedContent);
-      }
-    }, [loadedContent]);
-  
-    // Load image separately from images table
-    useEffect(() => {
-      const loadImage = async () => {
-        try {
-          const imageData = await apiService.getImage('history-main-image');
-          if (imageData && imageData.url) {
-            console.log('🖼️ Loaded history main image:', imageData.url);
-            setContent(prev => ({ ...prev, 'history-main-image': imageData.url }));
-            setImagePreview(imageData.url);
-            setImageUrl(imageData.url);
-          } else {
-            const defaultImage = 'https://picsum.photos/1200/400?random=10';
-            setContent(prev => ({ ...prev, 'history-main-image': defaultImage }));
-            setImagePreview(defaultImage);
-            setImageUrl(defaultImage);
-          }
-        } catch (error) {
-          console.log('⚠️ Failed to load history main image, using default');
-          const defaultImage = 'https://picsum.photos/1200/400?random=10';
-          setContent(prev => ({ ...prev, 'history-main-image': defaultImage }));
-          setImagePreview(defaultImage);
-          setImageUrl(defaultImage);
-        }
-      };
-  
-      loadImage();
-    }, []);
-  
-    const handleInputChange = (field: string, value: string | string[]) => {
-      setContent(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    };
-  
-    const handleImageSelect = (imageUrl: string, filename: string) => {
-      setContent(prev => ({
-        ...prev,
-        'history-main-image': imageUrl
-      }));
-      setShowImagePicker(false);
-    };
-  
-    const handleSave = async (field: string) => {
-      try {
-        const valueToSave = content[field];
-        
-        if (field === 'history-main-image') {
-          // Handle image using the images API
-          const urlParts = (valueToSave as string).split('/');
-          const filename = urlParts[urlParts.length - 1] || 'history-image.jpg';
-          
-          await apiService.setImageMapping(field, {
-            filename: filename,
-            url: valueToSave as string,
-            alt_text: 'History main image',
-            page_id: 'school-history',
-            description: 'Main image for school history page'
-          });
-        } else {
-          // Handle regular content
-          let type = 'text';
-          const saveId = Array.isArray(valueToSave) ? `${field}_${locale}` : `${field}_${locale}`;
-          
-          if (Array.isArray(valueToSave)) {
-            type = 'list';
-          }
-          
-          await updateContent(saveId, valueToSave, type, `${field} (${locale})`, 'school-history');
-        }
-        
-        alert(`${field} saved successfully!`);
-      } catch (error) {
-        console.error('Failed to save content:', error);
-        alert('Failed to save content. Please try again.');
-      }
-    };
-  
-    const handleArrayAdd = (field: string) => {
-      setContent(prev => ({
-        ...prev,
-        [field]: [...(prev[field] as string[]), '']
-      }));
-    };
-  
-    const handleArrayRemove = (field: string, index: number) => {
-      setContent(prev => ({
-        ...prev,
-        [field]: (prev[field] as string[]).filter((_, i) => i !== index)
-      }));
-    };
-  
-    const handleArrayItemChange = (field: string, index: number, value: string) => {
-      setContent(prev => ({
-        ...prev,
-        [field]: (prev[field] as string[]).map((item, i) => i === index ? value : item)
-      }));
-    };
-  
-    return (
-      <div className="space-y-6">
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">
-            History Page Content ({locale.toUpperCase()})
-          </h3>
-          <p className="text-sm text-blue-700">
-            Manage the content for the school history page. Changes are saved individually.
-          </p>
-        </div>
-  
-        {error && (
-          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
-  
-        {/* Main Image Section */}
-        <div className="bg-white border rounded-lg p-4">
-          <h4 className="text-md font-semibold mb-4 text-gray-700">Main Image</h4>
-          
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              Current Image
-            </label>
-            <div className="border rounded-lg p-2 bg-gray-50">
-              <img 
-                src={content['history-main-image'] || 'https://picsum.photos/1200/400?random=10'} 
-                alt="History main" 
-                className="w-full h-48 object-cover rounded"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://picsum.photos/1200/400?random=10';
-                }}
-              />
-            </div>
-          </div>
-  
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Select Image
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowImagePicker(true)}
-                className="w-full p-3 border border-gray-300 rounded-md text-left hover:bg-gray-50 transition-colors"
-              >
-                📁 Choose from Pictures Folder
-              </button>
-              <p className="text-xs text-gray-500 mt-1">
-                Select an image from the Pictures folder. Upload images in the Media Manager tab first.
-              </p>
-            </div>
-          </div>
-  
-          <button
-            onClick={() => handleSave('history-main-image')}
-            disabled={isLoading}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isLoading ? 'Saving...' : 'Save Image'}
-          </button>
-        </div>
-  
-        {/* History Paragraphs */}
-        <div className="bg-white border rounded-lg p-4">
-          <h4 className="text-md font-semibold mb-4 text-gray-700">History Content</h4>
-          
-          {['history-p1', 'history-p2', 'history-p3', 'history-p4'].map((field, index) => (
-            <div key={field} className="mb-6">
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Paragraph {index + 1}
-              </label>
-              <textarea
-                value={content[field]}
-                onChange={(e) => handleInputChange(field, e.target.value)}
-                rows={4}
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-                placeholder={`Enter paragraph ${index + 1} content...`}
-              />
-              <button
-                onClick={() => handleSave(field)}
-                disabled={isLoading}
-                className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          ))}
-        </div>
-  
-        {/* Image Caption */}
-        <div className="bg-white border rounded-lg p-4">
-          <h4 className="text-md font-semibold mb-4 text-gray-700">Image Caption</h4>
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-600 mb-2">
-              Main Image Caption
-            </label>
-            <input
-              type="text"
-              value={content['history-image-caption']}
-              onChange={(e) => handleInputChange('history-image-caption', e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter image caption..."
-            />
-            <button
-              onClick={() => handleSave('history-image-caption')}
-              disabled={isLoading}
-              className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {isLoading ? 'Saving...' : 'Save'}
-            </button>
-          </div>
-        </div>
-  
-        {/* Section Titles */}
-        <div className="bg-white border rounded-lg p-4">
-          <h4 className="text-md font-semibold mb-4 text-gray-700">Section Titles</h4>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Achievements Section Title
-              </label>
-              <input
-                type="text"
-                value={content['achievements-title']}
-                onChange={(e) => handleInputChange('achievements-title', e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter achievements section title..."
-              />
-              <button
-                onClick={() => handleSave('achievements-title')}
-                disabled={isLoading}
-                className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-  
-            {/* Database-driven Achievements Section */}
-            <AchievementsDirectorsManager confirm={() => Promise.resolve(false)} initialAchievements={[]} initialDirectors={[]}/>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-2">
-                Directors Section Title
-              </label>
-              <input
-                type="text"
-                value={content['directors-title']}
-                onChange={(e) => handleInputChange('directors-title', e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Enter directors section title..."
-              />
-              <button
-                onClick={() => handleSave('directors-title')}
-                disabled={isLoading}
-                className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {isLoading ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-            
-          </div>
-        </div>
-  
-        {/* Preview Link */}
-        <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-green-800 mb-2">👀 Preview Changes</h4>
-          <a
-            href="/school/history"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-          >
-            View History Page
-          </a>
-        </div>
-  
-  
-        {/* Image Picker Modal */}
-        {showImagePicker && (
-          <ImagePicker
-            onImageSelect={handleImageSelect}
-            currentImage={content['history-main-image']}
-            onClose={() => setShowImagePicker(false)}
-          />
-        )}
-      </div>
-    );
-  };
-  
-  const SchoolTeamTab: React.FC = () => {
+  // Original HistoryPageTab preserved for future use (commented out at user's request)
+// const HistoryPageTab: React.FC = () => {
+//     const { getContent, updateContent, isLoading, error } = useCMS();
+//     const { language: locale, t } = useLanguage(); // CORRECTED: use language as locale
+//     const [content, setContent] = useState<any>({ // Changed to any to handle mixed types
+//       'history-p1': '',
+//       'history-p2': '',
+//       'history-p3': '',
+//       'history-p4': '',
+//       'history-image-caption': '',
+//       'achievements-title': '',
+//       'achievements-list': [],
+//       'directors-title': '',
+//       'directors-list': [],
+//       'history-main-image': ''
+//     });
+// 
+//     const [showImagePicker, setShowImagePicker] = useState(false);
+//     const [imagePreview, setImagePreview] = useState('');
+//     const [imageUrl, setImageUrl] = useState('');
+// 
+//     // Memoize content to prevent infinite loops
+//     const loadedContent = useMemo(() => {
+//       if (!t.historyPage) return {};
+// 
+//       return {
+//         'history-p1': getContent(`history-p1_${locale}`, t.historyPage.p1 || ''),
+//         'history-p2': getContent(`history-p2_${locale}`, t.historyPage.p2 || ''),
+//         'history-p3': getContent(`history-p3_${locale}`, t.historyPage.p3 || ''),
+//         'history-p4': getContent(`history-p4_${locale}`, t.historyPage.p4 || ''),
+//         'history-image-caption': getContent(`history-image-caption_${locale}`, t.historyPage.imageCaption || ''),
+//         'achievements-title': getContent(`achievements-title_${locale}`, t.historyPage.achievements?.title || ''),
+//         'achievements-list': getContent(`achievements-list_${locale}`, [
+//           t.historyPage.achievements?.list?.[0] || '',
+//           t.historyPage.achievements?.list?.[1] || '',
+//           t.historyPage.achievements?.list?.[2] || '',
+//           t.historyPage.achievements?.list?.[3] || '',
+//           t.historyPage.achievements?.list?.[4] || ''
+//         ].filter(Boolean)),
+//         'directors-title': getContent(`directors-title_${locale}`, t.historyPage.directors?.title || ''),
+//         'directors-list': getContent(`directors-list_${locale}`, [
+//           t.historyPage.directors?.list?.[0] || '',
+//           t.historyPage.directors?.list?.[1] || '',
+//           t.historyPage.directors?.list?.[2] || ''
+//         ].filter(Boolean)),
+//         'history-main-image': '' // Will be loaded separately from images table
+//       };
+//     }, [locale, t.historyPage, getContent]);
+// 
+//     useEffect(() => {
+//       if (Object.keys(loadedContent).length > 0) {
+//         setContent(loadedContent);
+//       }
+//     }, [loadedContent]);
+// 
+//     // Load image separately from images table
+//     useEffect(() => {
+//       const loadImage = async () => {
+//         try {
+//           const imageData = await apiService.getImage('history-main-image');
+//           if (imageData && imageData.url) {
+//             console.log('🖼️ Loaded history main image:', imageData.url);
+//             setContent(prev => ({ ...prev, 'history-main-image': imageData.url }));
+//             setImagePreview(imageData.url);
+//             setImageUrl(imageData.url);
+//           } else {
+//             const defaultImage = 'https://picsum.photos/1200/400?random=10';
+//             setContent(prev => ({ ...prev, 'history-main-image': defaultImage }));
+//             setImagePreview(defaultImage);
+//             setImageUrl(defaultImage);
+//           }
+//         } catch (error) {
+//           console.log('⚠️ Failed to load history main image, using default');
+//           const defaultImage = 'https://picsum.photos/1200/400?random=10';
+//           setContent(prev => ({ ...prev, 'history-main-image': defaultImage }));
+//           setImagePreview(defaultImage);
+//           setImageUrl(defaultImage);
+//         }
+//       };
+// 
+//       loadImage();
+//     }, []);
+// 
+//     const handleInputChange = (field: string, value: string | string[]) => {
+//       setContent(prev => ({
+//         ...prev,
+//         [field]: value
+//       }));
+//     };
+// 
+//     const handleImageSelect = (imageUrl: string, filename: string) => {
+//       setContent(prev => ({
+//         ...prev,
+//         'history-main-image': imageUrl
+//       }));
+//       setShowImagePicker(false);
+//     };
+// 
+//     const handleSave = async (field: string) => {
+//       try {
+//         const valueToSave = content[field];
+// 
+//         if (field === 'history-main-image') {
+//           // Handle image using the images API
+//           const urlParts = (valueToSave as string).split('/');
+//           const filename = urlParts[urlParts.length - 1] || 'history-image.jpg';
+// 
+//           await apiService.setImageMapping(field, {
+//             filename: filename,
+//             url: valueToSave as string,
+//             alt_text: 'History main image',
+//             page_id: 'school-history',
+//             description: 'Main image for school history page'
+//           });
+//         } else {
+//           // Handle regular content
+//           let type = 'text';
+//           const saveId = Array.isArray(valueToSave) ? `${field}_${locale}` : `${field}_${locale}`;
+// 
+//           if (Array.isArray(valueToSave)) {
+//             type = 'list';
+//           }
+// 
+//           await updateContent(saveId, valueToSave, type, `${field} (${locale})`, 'school-history');
+//         }
+// 
+//         alert(`${field} saved successfully!`);
+//       } catch (error) {
+//         console.error('Failed to save content:', error);
+//         alert('Failed to save content. Please try again.');
+//       }
+//     };
+// 
+//     const handleArrayAdd = (field: string) => {
+//       setContent(prev => ({
+//         ...prev,
+//         [field]: [...(prev[field] as string[]), '']
+//       }));
+//     };
+// 
+//     const handleArrayRemove = (field: string, index: number) => {
+//       setContent(prev => ({
+//         ...prev,
+//         [field]: (prev[field] as string[]).filter((_, i) => i !== index)
+//       }));
+//     };
+// 
+//     const handleArrayItemChange = (field: string, index: number, value: string) => {
+//       setContent(prev => ({
+//         ...prev,
+//         [field]: (prev[field] as string[]).map((item, i) => i === index ? value : item)
+//       }));
+//     };
+// 
+//     return (
+//       <div className="space-y-6">
+//         <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+//           <h3 className="text-lg font-semibold text-blue-800 mb-2">
+//             History Page Content ({locale.toUpperCase()})
+//           </h3>
+//           <p className="text-sm text-blue-700">
+//             Manage the content for the school history page. Changes are saved individually.
+//           </p>
+//         </div>
+// 
+//         {error && (
+//           <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+//             {error}
+//           </div>
+//         )}
+// 
+//         {/* Main Image Section */}
+//         <div className="bg-white border rounded-lg p-4">
+//           <h4 className="text-md font-semibold mb-4 text-gray-700">Main Image</h4>
+// 
+//           <div className="mb-4">
+//             <label className="block text-sm font-medium text-gray-600 mb-2">
+//               Current Image
+//             </label>
+//             <div className="border rounded-lg p-2 bg-gray-50">
+//               <img 
+//                 src={content['history-main-image'] || 'https://picsum.photos/1200/400?random=10'} 
+//                 alt="History main" 
+//                 className="w-full h-48 object-cover rounded"
+//                 onError={(e) => {
+//                   e.currentTarget.src = 'https://picsum.photos/1200/400?random=10';
+//                 }}
+//               />
+//             </div>
+//           </div>
+// 
+//           <div className="space-y-4">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-600 mb-2">
+//                 Select Image
+//               </label>
+//               <button
+//                 type="button"
+//                 onClick={() => setShowImagePicker(true)}
+//                 className="w-full p-3 border border-gray-300 rounded-md text-left hover:bg-gray-50 transition-colors"
+//               >
+//                 📁 Choose from Pictures Folder
+//               </button>
+//               <p className="text-xs text-gray-500 mt-1">
+//                 Select an image from the Pictures folder. Upload images in the Media Manager tab first.
+//               </p>
+//             </div>
+//           </div>
+// 
+//           <button
+//             onClick={() => handleSave('history-main-image')}
+//             disabled={isLoading}
+//             className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+//           >
+//             {isLoading ? 'Saving...' : 'Save Image'}
+//           </button>
+//         </div>
+// 
+//         {/* History Paragraphs */}
+//         <div className="bg-white border rounded-lg p-4">
+//           <h4 className="text-md font-semibold mb-4 text-gray-700">History Content</h4>
+// 
+//           {['history-p1', 'history-p2', 'history-p3', 'history-p4'].map((field, index) => (
+//             <div key={field} className="mb-6">
+//               <label className="block text-sm font-medium text-gray-600 mb-2">
+//                 Paragraph {index + 1}
+//               </label>
+//               <textarea
+//                 value={content[field]}
+//                 onChange={(e) => handleInputChange(field, e.target.value)}
+//                 rows={4}
+//                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+//                 placeholder={`Enter paragraph ${index + 1} content...`}
+//               />
+//               <button
+//                 onClick={() => handleSave(field)}
+//                 disabled={isLoading}
+//                 className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+//               >
+//                 {isLoading ? 'Saving...' : 'Save'}
+//               </button>
+//             </div>
+//           ))}
+//         </div>
+// 
+//         {/* Image Caption */}
+//         <div className="bg-white border rounded-lg p-4">
+//           <h4 className="text-md font-semibold mb-4 text-gray-700">Image Caption</h4>
+//           <div className="mb-4">
+//             <label className="block text-sm font-medium text-gray-600 mb-2">
+//               Main Image Caption
+//             </label>
+//             <input
+//               type="text"
+//               value={content['history-image-caption']}
+//               onChange={(e) => handleInputChange('history-image-caption', e.target.value)}
+//               className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+//               placeholder="Enter image caption..."
+//             />
+//             <button
+//               onClick={() => handleSave('history-image-caption')}
+//               disabled={isLoading}
+//               className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+//             >
+//               {isLoading ? 'Saving...' : 'Save'}
+//             </button>
+//           </div>
+//         </div>
+// 
+//         {/* Section Titles */}
+//         <div className="bg-white border rounded-lg p-4">
+//           <h4 className="text-md font-semibold mb-4 text-gray-700">Section Titles</h4>
+// 
+//           <div className="space-y-4">
+//             <div>
+//               <label className="block text-sm font-medium text-gray-600 mb-2">
+//                 Achievements Section Title
+//               </label>
+//               <input
+//                 type="text"
+//                 value={content['achievements-title']}
+//                 onChange={(e) => handleInputChange('achievements-title', e.target.value)}
+//                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+//                 placeholder="Enter achievements section title..."
+//               />
+//               <button
+//                 onClick={() => handleSave('achievements-title')}
+//                 disabled={isLoading}
+//                 className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+//               >
+//                 {isLoading ? 'Saving...' : 'Save'}
+//               </button>
+//             </div>
+// 
+//             {/* Database-driven Achievements Section */}
+//             <AchievementsDirectorsManager confirm={() => Promise.resolve(false)} initialAchievements={[]} initialDirectors={[]}/>
+// 
+//             <div>
+//               <label className="block text-sm font-medium text-gray-600 mb-2">
+//                 Directors Section Title
+//               </label>
+//               <input
+//                 type="text"
+//                 value={content['directors-title']}
+//                 onChange={(e) => handleInputChange('directors-title', e.target.value)}
+//                 className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+//                 placeholder="Enter directors section title..."
+//               />
+//               <button
+//                 onClick={() => handleSave('directors-title')}
+//                 disabled={isLoading}
+//                 className="mt-2 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+//               >
+//                 {isLoading ? 'Saving...' : 'Save'}
+//               </button>
+//             </div>
+// 
+//           </div>
+//         </div>
+// 
+//         {/* Preview Link */}
+//         <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+//           <h4 className="text-sm font-medium text-green-800 mb-2">👀 Preview Changes</h4>
+//           <a
+//             href="/school/history"
+//             target="_blank"
+//             rel="noopener noreferrer"
+//             className="inline-block px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+//           >
+//             View History Page
+//           </a>
+//         </div>
+// 
+// 
+//         {/* Image Picker Modal */}
+//         {showImagePicker && (
+//           <ImagePicker
+//             onImageSelect={handleImageSelect}
+//             currentImage={content['history-main-image']}
+//             onClose={() => setShowImagePicker(false)}
+//           />
+//         )}
+//       </div>
+//     );
+//   };
+// 
+
+const SchoolTeamTab: React.FC = () => {
     const { t } = useLanguage();
     const { 
       getSchoolStaff, 
@@ -3242,12 +3244,12 @@ const HistoryPageTab: React.FC = () => {
             icon: '🔓',
             content: <InfoAccessManagerTab confirm={() => Promise.resolve(false)} initialData={[]}/>
           },
-          {
-            id: 'history',
-            label: t.cms.tabs.history,
-            icon: '📚',
-            content: <HistoryPageTab />
-          },
+          // {
+          //   id: 'history',
+          //   label: t.cms.tabs.history,
+          //   icon: '📚',
+          //   content: <HistoryPageTab />
+          // },
           {
             id: 'gallery',
             label: t.cms.tabs.gallery,
