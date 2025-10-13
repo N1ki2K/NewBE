@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiService } from '../src/services/api';
 import { useLanguage } from './LanguageContext';
-import { mockDocuments } from '../src/data/mockDocumentsData';
 
 interface NavItem {
   label: string;
@@ -80,27 +79,14 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     );
   };
 
-  const buildDocumentNavChildrenFromMock = (): NavItem[] => {
-    const documents = mockDocuments.flatMap((category) => category.documents || []);
-    return buildDocumentNavChildren(
-      documents.map((doc) => ({
-        filename: doc.filename,
-        title: doc.title?.[language] ?? '',
-      }))
-    );
-  };
-
   const loadDocumentNavChildren = async (): Promise<NavItem[]> => {
     try {
       const response = await apiService.getDocuments();
       const fromApi = buildDocumentNavChildren(response.documents || []);
-      if (fromApi.length > 0) {
-        return fromApi;
-      }
-      return buildDocumentNavChildrenFromMock();
+      return fromApi;
     } catch (docError) {
-      console.warn('Failed to load documents for navigation, using fallback data:', docError);
-      return buildDocumentNavChildrenFromMock();
+      console.warn('Failed to load documents for navigation:', docError);
+      return [];
     }
   };
 
@@ -326,9 +312,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
   }, [t, language]); // Reload when language changes
 
   const finalNavItems =
-    navItems.length > 0
-      ? navItems
-      : getFallbackNavigation(getTranslation, buildDocumentNavChildrenFromMock());
+    navItems.length > 0 ? navItems : getFallbackNavigation(getTranslation, []);
   
   // Debug logging
   console.log('🧭 Navigation Debug:', {

@@ -30,7 +30,7 @@ const InlinePDFViewer: React.FC<InlinePDFViewerProps> = ({
 
     // Construct the PDF URL
     const baseUrl = getApiBaseUrl();
-    const url = `${baseUrl}/public/documents/${encodeURIComponent(filename)}`;
+    const url = `${baseUrl}/public/uploads/documents/${encodeURIComponent(filename)}`;
     
     // Check if the PDF exists
     checkPdfExists(url);
