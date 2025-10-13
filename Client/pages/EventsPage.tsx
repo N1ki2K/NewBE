@@ -2,21 +2,23 @@ import React, { useState, useEffect } from 'react';
 import PageWrapper from '../components/PageWrapper';
 import { useLanguage } from '../context/LanguageContext';
 import { apiService } from '../src/services/api';
-import { mockEvents, getEventsInLanguage } from '../src/data/mockEventsData';
 
 interface Event {
   id: number;
   title: string;
   description: string;
   date: string;
-  startTime: string;
-  endTime: string;
+  startTime?: string | null;
+  endTime?: string | null;
   type: 'academic' | 'extracurricular' | 'meeting' | 'holiday' | 'other';
   location?: string;
+  locale?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 const CalendarPage: React.FC = () => {
-  const { t, locale } = useLanguage();
+  const { locale } = useLanguage();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,14 +42,13 @@ const CalendarPage: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await apiService.getUpcomingEvents(locale, 100); // Get more events for calendar view
-      setEvents(response.events || []);
+      const response = await apiService.getEvents(locale); // Fetch all events for the selected locale
+      const nextEvents = Array.isArray(response) ? response : [];
+      setEvents(nextEvents);
     } catch (error) {
       console.error('Failed to load events:', error);
-      // Use mock data from SQL as fallback
-      const fallbackEvents = getEventsInLanguage(locale === 'bg' ? 'bg' : 'en');
-      setEvents(fallbackEvents);
-      setError(null); // Clear error since we have fallback data
+      setEvents([]);
+      setError('Unable to load events. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +78,10 @@ const CalendarPage: React.FC = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateString = date.toISOString().split('T')[0];
-      const dayEvents = events.filter(event => event.date === dateString);
+      const dayEvents = events.filter(event => {
+        const eventDate = event.date?.split('T')[0];
+        return eventDate === dateString;
+      });
       
       days.push({
         date,
@@ -121,20 +125,27 @@ const CalendarPage: React.FC = () => {
     });
   };
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString?: string | null) => {
+    if (!timeString) return '--';
     return timeString.substring(0, 5);
   };
 
+  const getEventTimestamp = (event: Event) => {
+    const baseDate = event.date?.split('T')[0] || '';
+    const time = event.startTime ? event.startTime.substring(0, 5) : '00:00';
+    return new Date(`${baseDate}T${time}`).getTime();
+  };
   const getEventTypeInfo = (type: Event['type']) => {
     return eventTypes[type] || eventTypes.other;
   };
 
   const filteredEvents = selectedDate 
-    ? events.filter(event => event.date === selectedDate)
+    ? events.filter(event => event.date?.startsWith(selectedDate))
     : events.filter(event => new Date(event.date) >= new Date());
 
   const upcomingEvents = events
     .filter(event => new Date(event.date) >= new Date())
+    .sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b))
     .slice(0, 5);
 
   return (
@@ -233,15 +244,15 @@ const CalendarPage: React.FC = () => {
                           <div className="space-y-1">
                             {day.events.slice(0, 2).map(event => {
                               const typeInfo = getEventTypeInfo(event.type);
-                              return (
-                                <div
-                                  key={event.id}
-                                  className={`text-xs px-1 py-0.5 rounded truncate ${typeInfo.color}`}
-                                  title={`${event.title} (${formatTime(event.startTime)}-${formatTime(event.endTime)})`}
-                                >
-                                  {typeInfo.icon} {event.title}
-                                </div>
-                              );
+                          return (
+                            <div
+                              key={event.id}
+                              className={`text-xs px-1 py-0.5 rounded truncate ${typeInfo.color}`}
+                              title={`${event.title} (${formatTime(event.startTime)}${event.endTime ? `-${formatTime(event.endTime)}` : ''})`}
+                            >
+                              {typeInfo.icon} {event.title}
+                            </div>
+                          );
                             })}
                             {day.events.length > 2 && (
                               <div className="text-xs text-gray-500 px-1">
@@ -290,7 +301,7 @@ const CalendarPage: React.FC = () => {
                                 <p className="text-sm text-gray-600 mb-2">{event.description}</p>
                               )}
                               <div className="flex items-center gap-4 text-xs text-gray-500">
-                                <span>🕐 {formatTime(event.startTime)} - {formatTime(event.endTime)}</span>
+                                <span>🕐 {formatTime(event.startTime)}{event.endTime ? ` - ${formatTime(event.endTime)}` : ''}</span>
                                 {event.location && <span>📍 {event.location}</span>}
                               </div>
                             </div>
@@ -367,7 +378,8 @@ const CalendarPage: React.FC = () => {
                           </div>
                           <h5 className="font-medium text-sm text-gray-900 mb-1">{event.title}</h5>
                           <p className="text-xs text-gray-500">
-                            {formatTime(event.startTime)} - {formatTime(event.endTime)}
+                            {formatTime(event.startTime)}
+                            {event.endTime ? ` - ${formatTime(event.endTime)}` : ''}
                           </p>
                         </div>
                       );

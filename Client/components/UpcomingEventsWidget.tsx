@@ -7,10 +7,11 @@ interface Event {
   title: string;
   description: string;
   date: string;
-  startTime: string;
-  endTime: string;
+  startTime?: string | null;
+  endTime?: string | null;
   type: 'academic' | 'extracurricular' | 'meeting' | 'holiday' | 'other';
   location?: string;
+  locale?: string;
 }
 
 interface UpcomingEventsWidgetProps {
@@ -40,11 +41,19 @@ const UpcomingEventsWidget: React.FC<UpcomingEventsWidgetProps> = ({
     loadUpcomingEvents();
   }, [locale, limit]);
 
+  const getEventTimestamp = (event: Event) => {
+    const baseDate = event.date?.split('T')[0] || '';
+    const time = event.startTime ? event.startTime.substring(0, 5) : '00:00';
+    return new Date(`${baseDate}T${time}`).getTime();
+  };
+
   const loadUpcomingEvents = async () => {
     try {
       setIsLoading(true);
       const response = await apiService.getUpcomingEvents(locale, limit);
-      setEvents(response.events || []);
+      const fetched = Array.isArray(response?.events) ? response.events : [];
+      const sorted = [...fetched].sort((a, b) => getEventTimestamp(a) - getEventTimestamp(b));
+      setEvents(sorted);
     } catch (error) {
       console.error('Failed to load upcoming events:', error);
       // If backend is unavailable, silently handle error without redirecting
@@ -63,7 +72,8 @@ const UpcomingEventsWidget: React.FC<UpcomingEventsWidgetProps> = ({
     });
   };
 
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString?: string | null) => {
+    if (!timeString) return '--';
     return timeString.substring(0, 5); // Remove seconds from HH:MM:SS
   };
 
@@ -147,9 +157,12 @@ const UpcomingEventsWidget: React.FC<UpcomingEventsWidgetProps> = ({
                   )}
                   
                   <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      🕐 {formatTime(event.startTime)} - {formatTime(event.endTime)}
-                    </span>
+                    {event.startTime && (
+                      <span className="flex items-center gap-1">
+                        🕐 {formatTime(event.startTime)}
+                        {event.endTime ? ` - ${formatTime(event.endTime)}` : ''}
+                      </span>
+                    )}
                     {event.location && (
                       <span className="flex items-center gap-1">
                         📍 {event.location}
