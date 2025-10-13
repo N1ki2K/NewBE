@@ -544,7 +544,6 @@ const SchoolTeamTab: React.FC = () => {
     const [staffImages, setStaffImages] = useState<{[key: string]: any}>({});
     const [showTeamPhotoManager, setShowTeamPhotoManager] = useState(false);
     const [teamGroupPhoto, setTeamGroupPhoto] = useState<string | null>(null);
-    const { confirm } = useConfirm();
     const apiBaseUrl = getApiBaseUrl();
   
     useEffect(() => {
@@ -1496,14 +1495,7 @@ const SchoolTeamTab: React.FC = () => {
     };
   
     const handleDeleteImage = async (filename: string) => {
-      const confirmed = await confirm({
-        title: 'Delete Image',
-        message: `Are you sure you want to delete "${filename}" from the Pictures folder? This action cannot be undone.`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        isDangerous: true
-      });
-  
+      const confirmed = window.confirm(`Are you sure you want to delete "${filename}" from the Pictures folder? This action cannot be undone.`);
       if (!confirmed) {
         return;
       }
