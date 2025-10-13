@@ -90,12 +90,18 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     }
   };
 
+  const normalizePath = (path: string): string => {
+    if (!path) return '';
+    const trimmed = path.replace(/\/+$/, '');
+    return trimmed === '' ? '/' : trimmed;
+  };
+
   const withDocumentChildren = (items: NavItem[], documentChildren: NavItem[]): NavItem[] => {
     if (documentChildren.length === 0) {
       return items;
     }
     return items.map((item) => {
-      if (item.path === '/documents') {
+      if (normalizePath(item.path) === '/documents') {
         return {
           ...item,
           children: documentChildren,
