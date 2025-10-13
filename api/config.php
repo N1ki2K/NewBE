@@ -152,7 +152,7 @@ if ($backendPublicEnv !== false && $backendPublicEnv !== '') {
 define('BACKEND_PUBLIC_PATH', $backendPublicPath);
 
 $publicUploadsBase = '/public/uploads';
-$documentsPublicPath = '/public/documents';
+$documentsPublicPath = $publicUploadsBase . '/documents';
 $uploadPicturesPublicPath = $publicUploadsBase . '/pictures';
 $uploadDocumentsPublicPath = $documentsPublicPath;
 $uploadPresentationsPublicPath = $publicUploadsBase . '/presentations';
@@ -182,7 +182,7 @@ if (!function_exists('get_allowed_origins')) {
 // Upload Configuration
 $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : dirname(__DIR__);
 $customUploadBaseDir = $documentRoot . '/public/uploads/';
-$documentsBaseDir = $documentRoot . '/public/documents/';
+$documentsBaseDir = $customUploadBaseDir . 'documents/';
 
 define('UPLOAD_DIR', $customUploadBaseDir);
 define('UPLOAD_PICTURES_DIR', $customUploadBaseDir . 'pictures/');
