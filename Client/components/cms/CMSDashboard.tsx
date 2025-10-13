@@ -1484,7 +1484,11 @@ const SchoolTeamTab: React.FC = () => {
     );
   };
   
-  const MediaManagerTab: React.FC = () => {
+  interface MediaManagerTabProps {
+    isActive: boolean;
+  }
+
+  const MediaManagerTab: React.FC<MediaManagerTabProps> = ({ isActive }) => {
     const { t } = useLanguage();
     const { isLoading, error } = useCMS();
     const [picturesImages, setPicturesImages] = useState<any[]>([]);
@@ -1495,8 +1499,10 @@ const SchoolTeamTab: React.FC = () => {
   
     // Load images from Pictures folder
     useEffect(() => {
-      loadPicturesImages();
-    }, []);
+      if (isActive) {
+        loadPicturesImages();
+      }
+    }, [isActive]);
   
     const loadPicturesImages = async () => {
       try {
@@ -3286,7 +3292,7 @@ const SchoolTeamTab: React.FC = () => {
             id: 'media',
             label: t.cms.tabs.media,
             icon: '🖼️',
-            content: <MediaManagerTab />
+            content: <MediaManagerTab isActive={activeTab === 'media'} />
           },
           {
             id: 'documents',
