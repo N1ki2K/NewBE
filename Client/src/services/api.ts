@@ -639,12 +639,16 @@ class ApiService {
   }
 
   // Events methods
-  async getEvents(locale = 'en', start?: string, end?: string) {
+  async getEvents(locale = 'en', start?: string, end?: string): Promise<any[]> {
     let endpoint = `/events?locale=${locale}`;
     if (start && end) {
       endpoint += `&start=${start}&end=${end}`;
     }
-    return this.request<{ events: any[] }>(endpoint);
+    const data = await this.request<{ events?: any[] }>(endpoint);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    return Array.isArray(data?.events) ? data.events : [];
   }
 
   async getEvent(id: number) {

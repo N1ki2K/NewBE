@@ -10,10 +10,12 @@ interface Event {
   description: string;
   date: string;
   startTime: string;
-  endTime: string;
+  endTime?: string | null;
   type: 'academic' | 'extracurricular' | 'meeting' | 'holiday' | 'other';
   location?: string;
-  createdAt: string;
+  locale?: string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 const CalendarManagerTab: React.FC = () => {
@@ -123,7 +125,7 @@ const CalendarManagerTab: React.FC = () => {
       description: event.description,
       date: event.date.split('T')[0], // Ensure date is in YYYY-MM-DD format
       startTime: event.startTime,
-      endTime: event.endTime,
+      endTime: event.endTime ?? '',
       type: event.type,
       location: event.location || ''
     });
@@ -298,7 +300,7 @@ const CalendarManagerTab: React.FC = () => {
                         <div
                           key={event.id}
                           className={`text-xs px-1 py-0.5 rounded truncate ${typeInfo.color}`}
-                          title={`${event.title} (${event.startTime}-${event.endTime})`}
+                          title={`${event.title} (${event.startTime}${event.endTime ? `-${event.endTime}` : ''})`}
                         >
                           {typeInfo.icon} {event.title}
                         </div>
@@ -341,7 +343,7 @@ const CalendarManagerTab: React.FC = () => {
                         <p className="text-sm text-gray-600 mb-2">{event.description}</p>
                       )}
                       <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>🕐 {event.startTime} - {event.endTime}</span>
+                        <span>🕐 {event.startTime}{event.endTime ? ` - ${event.endTime}` : ''}</span>
                         {event.location && <span>📍 {event.location}</span>}
                       </div>
                     </div>
