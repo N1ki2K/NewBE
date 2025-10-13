@@ -3400,12 +3400,6 @@ const sortGalleryImageList = (images: any[]): any[] => {
             content: <PatronManagerTab confirm={() => Promise.resolve(false)} />
           },
           {
-            id: 'useful-links',
-            label: 'Useful Links',
-            icon: '🔗',
-            content: <UsefulLinksManagerTab confirm={() => Promise.resolve(false)} initialData={[]}/>
-          },
-          {
             id: 'documents-menu',
             label: t.cms.tabs.documentsMenu,
             icon: '📋',
