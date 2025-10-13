@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PageWrapper from '../components/PageWrapper';
 import { useLanguage } from '../context/LanguageContext';
-import { apiService, ApiError } from '../src/services/api';
+import { apiService } from '../src/services/api';
+import { mockUsefulLinks } from '../src/data/mockUsefulLinks';
 
 interface UsefulLink {
   id: number;
@@ -40,40 +40,131 @@ const LinkCard: React.FC<{
     </a>
 )
 
+const normalizeLink = (link: any, index: number, locale: string): UsefulLink => {
+  const titleCandidates = [
+    typeof link?.title === 'string' ? link.title : null,
+    locale === 'en' ? link?.title_en : link?.title_bg,
+    locale === 'bg' ? link?.title_en : link?.title_bg,
+  ];
+
+  const normalizedTitle =
+    titleCandidates
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .find((value) => value.length > 0) || 'Untitled link';
+
+  const normalizedDescription =
+    (typeof link?.description === 'string' && link.description.trim().length > 0
+      ? link.description
+      : locale === 'en'
+        ? link?.description_en
+        : link?.description_bg) || undefined;
+
+  const normalizedCta =
+    (typeof link?.cta === 'string' && link.cta.trim().length > 0
+      ? link.cta
+      : locale === 'en'
+        ? link?.cta_en
+        : link?.cta_bg) || undefined;
+
+  const url = typeof link?.url === 'string' && link.url.trim().length > 0 ? link.url : '#';
+
+  return {
+    id: typeof link?.id === 'number' ? link.id : Number(link?.id) || index + 1,
+    link_key:
+      typeof link?.link_key === 'string' && link.link_key.trim().length > 0
+        ? link.link_key
+        : `link-${index + 1}`,
+    title: normalizedTitle || 'Untitled link',
+    description: normalizedDescription,
+    url,
+    cta: normalizedCta,
+    position: typeof link?.position === 'number' ? link.position : index + 1,
+  };
+};
+
+const normalizeContent = (item: any, index: number, locale: string): UsefulLinksContent => ({
+  id: typeof item?.id === 'number' ? item.id : Number(item?.id) || index + 1,
+  section_key:
+    typeof item?.section_key === 'string' && item.section_key.trim().length > 0
+      ? item.section_key
+      : `section-${index + 1}`,
+  title:
+    (typeof item?.title === 'string' && item.title.trim().length > 0
+      ? item.title
+      : locale === 'en'
+        ? item?.title_en
+        : item?.title_bg) || undefined,
+  content:
+    (typeof item?.content === 'string' && item.content.trim().length > 0
+      ? item.content
+      : locale === 'en'
+        ? item?.content_en
+        : item?.content_bg) || undefined,
+  position: typeof item?.position === 'number' ? item.position : index + 1,
+});
+
 const UsefulLinksPage: React.FC = () => {
   const { t, getTranslation, locale } = useLanguage();
-  const navigate = useNavigate();
   const [links, setLinks] = useState<UsefulLink[]>([]);
   const [content, setContent] = useState<UsefulLinksContent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isFallbackData, setIsFallbackData] = useState(false);
 
   useEffect(() => {
     loadUsefulLinksContent();
-  }, [locale, navigate]);
+  }, [locale]);
+
+  const buildFallbackData = (): { links: UsefulLink[]; content: UsefulLinksContent[] } => {
+    const fallbackLinks = mockUsefulLinks.map((item, index) => ({
+      id: index + 1,
+      link_key: item.key,
+      title: item.title[locale] ?? item.title.bg,
+      description: item.description?.[locale] ?? item.description?.bg,
+      url: item.url,
+      cta: item.cta?.[locale] ?? item.cta?.bg,
+      position: index + 1,
+    }));
+
+    const fallbackContent: UsefulLinksContent[] = [
+      {
+        id: 1,
+        section_key: 'intro',
+        title: undefined,
+        content: getTranslation('usefulLinksPage.intro', ''),
+        position: 1,
+      },
+    ];
+
+    return { links: fallbackLinks, content: fallbackContent };
+  };
 
   const loadUsefulLinksContent = async () => {
     try {
       setIsLoading(true);
-      setError(null);
       const response = await apiService.getUsefulLinksContent(locale);
-      setLinks(response.links);
-      setContent(response.content);
+      const apiLinks = Array.isArray(response.links)
+        ? response.links.map((link, index) => normalizeLink(link, index, locale))
+        : [];
+      const apiContent = Array.isArray(response.content)
+        ? response.content.map((item, index) => normalizeContent(item, index, locale))
+        : [];
+
+      if (apiLinks.length === 0) {
+        const fallback = buildFallbackData();
+        setLinks(fallback.links);
+        setContent(apiContent.length > 0 ? apiContent : fallback.content);
+        setIsFallbackData(true);
+      } else {
+        setLinks(apiLinks);
+        setContent(apiContent.length > 0 ? apiContent : buildFallbackData().content);
+        setIsFallbackData(false);
+      }
     } catch (err) {
       console.error('Failed to load useful links content:', err);
-      
-      // Check if this is a backend connection error
-      if (err instanceof ApiError && err.status === 0) {
-        console.log('Backend connection error detected, redirecting to 404');
-        navigate('/404', { replace: true });
-        return;
-      }
-      
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(t.usefulLinksPage.failedToLoad);
-      }
+      const fallback = buildFallbackData();
+      setLinks(fallback.links);
+      setContent(fallback.content);
+      setIsFallbackData(true);
     } finally {
       setIsLoading(false);
     }
@@ -94,32 +185,20 @@ const UsefulLinksPage: React.FC = () => {
     );
   }
 
-  if (error) {
-    return (
-      <PageWrapper title={getTranslation('usefulLinksPage.errorTitle', 'Грешка')}>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="text-red-600 mb-4">
-            <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z"></path>
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-red-800 mb-2">{getTranslation('usefulLinksPage.error', 'Грешка')}</h3>
-          <p className="text-red-700 mb-4">{error}</p>
-          <button
-            onClick={loadUsefulLinksContent}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-          >
-            {getTranslation('usefulLinksPage.tryAgain', 'Опитай отново')}
-          </button>
-        </div>
-      </PageWrapper>
-    );
-  }
-
   const introContent = getContentByKey('intro');
 
   return (
     <PageWrapper title={getTranslation('usefulLinksPage.title', 'Полезни връзки')}>
+      {isFallbackData && (
+        <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+          {getTranslation(
+            'usefulLinksPage.fallbackNotice',
+            locale === 'bg'
+              ? 'Показваме предварително заредени полезни връзки, защото връзката със сървъра беше недостъпна.'
+              : 'Showing preloaded useful links because the server connection was unavailable.'
+          )}
+        </div>
+      )}
       {introContent && (
         <p className="mb-12 text-lg leading-relaxed text-gray-700">
           {introContent.content}

@@ -284,14 +284,23 @@ const NewsArticlePage: React.FC = () => {
   const footerSuffix =
     language === 'bg' ? 'Всички права запазени.' : 'All rights reserved.';
 
+  const featuredImageUrl =
+    article.featuredImage ||
+    (article as unknown as { featured_image_url?: string }).featured_image_url ||
+    (article as unknown as { thumbnail_url?: string }).thumbnail_url ||
+    undefined;
+
   const newsArticleData: NewsArticleData = {
     title: article.title,
     subtitle: article.excerpt,
     date: formattedDate,
     dateTime: article.publishedDate,
     author: authorName,
-    image: article.featuredImage,
-    imageAlt: article.featuredImageAlt || article.title,
+    image: featuredImageUrl,
+    imageAlt:
+      article.featuredImageAlt ||
+      (article as unknown as { featured_image_alt?: string }).featured_image_alt ||
+      article.title,
     content: hasHtmlContent ? [] : contentParagraphs,
     htmlContent: hasHtmlContent ? article.content : undefined,
     pdfUrl: pdfAttachmentInfo?.url,

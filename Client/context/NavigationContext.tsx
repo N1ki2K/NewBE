@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { apiService } from '../src/services/api';
 import { useLanguage } from './LanguageContext';
+import { mockDocuments } from '../src/data/mockDocumentsData';
 
 interface NavItem {
   label: string;
@@ -33,46 +34,133 @@ interface NavigationProviderProps {
 }
 
 export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children }) => {
-  const { t, getTranslation } = useLanguage();
+  const { t, getTranslation, language } = useLanguage();
   const [navItems, setNavItems] = useState<NavItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const humanizeFilename = (filename: string): string => {
+    const withoutExtension = filename.replace(/\.[^/.]+$/, '');
+    const withSpaces = withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!withSpaces) {
+      return filename;
+    }
+    return withSpaces
+      .split(' ')
+      .map((word) => (word ? word.charAt(0).toUpperCase() + word.slice(1) : word))
+      .join(' ');
+  };
+
+  const buildDocumentNavChildren = (entries: Array<{ filename: string; title?: string }>): NavItem[] => {
+    const seen = new Set<string>();
+    const docs = entries
+      .map((entry) => {
+        const { filename, title } = entry;
+        if (!filename) {
+          return null;
+        }
+        const extension = filename.split('.').pop()?.toLowerCase();
+        if (extension !== 'pdf') {
+          return null;
+        }
+        if (seen.has(filename)) {
+          return null;
+        }
+        seen.add(filename);
+        const label = title && title.trim().length > 0 ? title : humanizeFilename(filename);
+        return {
+          label,
+          path: `/documents/pdf/${encodeURIComponent(filename)}`,
+        };
+      })
+      .filter((item): item is NavItem => Boolean(item));
+
+    return docs.sort((a, b) =>
+      a.label.localeCompare(b.label, language === 'bg' ? 'bg' : 'en', { sensitivity: 'base' })
+    );
+  };
+
+  const buildDocumentNavChildrenFromMock = (): NavItem[] => {
+    const documents = mockDocuments.flatMap((category) => category.documents || []);
+    return buildDocumentNavChildren(
+      documents.map((doc) => ({
+        filename: doc.filename,
+        title: doc.title?.[language] ?? '',
+      }))
+    );
+  };
+
+  const loadDocumentNavChildren = async (): Promise<NavItem[]> => {
+    try {
+      const response = await apiService.getDocuments();
+      const fromApi = buildDocumentNavChildren(response.documents || []);
+      if (fromApi.length > 0) {
+        return fromApi;
+      }
+      return buildDocumentNavChildrenFromMock();
+    } catch (docError) {
+      console.warn('Failed to load documents for navigation, using fallback data:', docError);
+      return buildDocumentNavChildrenFromMock();
+    }
+  };
+
+  const withDocumentChildren = (items: NavItem[], documentChildren: NavItem[]): NavItem[] => {
+    if (documentChildren.length === 0) {
+      return items;
+    }
+    return items.map((item) => {
+      if (item.path === '/documents') {
+        return {
+          ...item,
+          children: documentChildren,
+        };
+      }
+      return item;
+    });
+  };
+
   // Fallback navigation for when API fails or is loading
-  const getFallbackNavigation = (getTranslation: (key: string, fallback?: string) => string): NavItem[] => [
-    { label: getTranslation('nav.home', 'Home'), path: '/' },
-    {
-      label: getTranslation('nav.school.title', 'School'),
-      path: '/school',
-      children: [
-        { label: getTranslation('nav.school.history', 'History'), path: '/school/history' },
-        { label: getTranslation('nav.school.patron', 'Patron'), path: '/school/patron' },
-        { label: getTranslation('nav.school.team', 'Team'), path: '/school/team' },
-        { label: getTranslation('nav.school.council', 'Council'), path: '/school/council' },
-        { label: getTranslation('nav.school.news', 'News'), path: '/school/news' },
+  const getFallbackNavigation = (
+    translate: (key: string, fallback?: string) => string,
+    documentChildren: NavItem[]
+  ): NavItem[] =>
+    withDocumentChildren(
+      [
+        { label: translate('nav.home', 'Home'), path: '/' },
+        {
+          label: translate('nav.school.title', 'School'),
+          path: '/school',
+          children: [
+            { label: translate('nav.school.history', 'History'), path: '/school/history' },
+            { label: translate('nav.school.patron', 'Patron'), path: '/school/patron' },
+            { label: translate('nav.school.team', 'Team'), path: '/school/team' },
+            { label: translate('nav.school.council', 'Council'), path: '/school/council' },
+            { label: translate('nav.school.news', 'News'), path: '/school/news' },
+          ],
+        },
+        {
+          label: translate('nav.documents.title', 'Documents'),
+          path: '/documents',
+          children: documentChildren,
+        },
+        { label: translate('nav.gallery', 'Gallery'), path: '/gallery' },
+        {
+          label: translate('nav.projects.title', 'Projects'),
+          path: '/projects',
+          children: [],
+        },
+        { label: translate('nav.contacts', 'Contacts'), path: '/contacts' },
+        {
+          label: translate('nav.more', 'Още'),
+          path: '/more',
+          children: [
+            { label: translate('nav.usefulLinks', 'Useful Links'), path: '/useful-links' },
+            { label: translate('nav.infoAccess', 'Info Access'), path: '/info-access' },
+          ],
+        },
       ],
-    },
-    {
-      label: getTranslation('nav.documents.title', 'Documents'),
-      path: '/documents',
-      children: []
-    },
-    { label: getTranslation('nav.gallery', 'Gallery'), path: '/gallery' },
-    {
-      label: getTranslation('nav.projects.title', 'Projects'),
-      path: '/projects',
-      children: []
-    },
-    { label: getTranslation('nav.contacts', 'Contacts'), path: '/contacts' },
-    {
-      label: getTranslation('nav.more', 'Още'),
-      path: '/more',
-      children: [
-        { label: getTranslation('nav.usefulLinks', 'Useful Links'), path: '/useful-links' },
-        { label: getTranslation('nav.infoAccess', 'Info Access'), path: '/info-access' },
-      ]
-    },
-  ];
+      documentChildren
+    );
 
   const getTranslatedLabel = (pageId: string, pageName: string): string => {
     const labelMap: Record<string, string> = {
@@ -157,10 +245,13 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
   };
 
   const loadNavigation = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    const documentChildren = await loadDocumentNavChildren();
+
     try {
-      setIsLoading(true);
-      setError(null);
-      
+
       // Load pages and dynamic navigation items
       const [pages, headerNav] = await Promise.all([
         apiService.getPages(),
@@ -175,7 +266,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
         const pageOrder = ['home', 'school', 'documents', 'gallery', 'useful-links', 'projects', 'contacts', 'info-access'];
         
         // Process each page in the desired order
-        pageOrder.forEach(pageId => {
+        pageOrder.forEach((pageId) => {
           const page = pages.find(p => p.id === pageId && p.show_in_menu && (!p.parent_id || p.parent_id === null));
           if (page) {
             let navItem: NavItem;
@@ -186,7 +277,10 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
               navItem = {
                 label: getTranslatedLabel(page.id, page.name),
                 path: page.path,
-                children: convertDynamicChildren(documentsNav?.children)
+                children:
+                  (documentChildren.length > 0
+                    ? documentChildren
+                    : convertDynamicChildren(documentsNav?.children))
               };
             } else if (pageId === 'projects') {
               // Use dynamic navigation items for projects
@@ -212,13 +306,12 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
         
         return navStructure;
       };
-      
       const navItems = buildNavigation(pages, headerNav.navigation);
-      setNavItems(navItems);
+      setNavItems(withDocumentChildren(navItems, documentChildren));
     } catch (err) {
       console.warn('Failed to load dynamic navigation, using fallback:', err);
       setError('Failed to load navigation');
-      setNavItems(getFallbackNavigation(getTranslation));
+      setNavItems(getFallbackNavigation(getTranslation, documentChildren));
     } finally {
       setIsLoading(false);
     }
@@ -230,9 +323,12 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
 
   useEffect(() => {
     loadNavigation();
-  }, [t]); // Reload when language changes
+  }, [t, language]); // Reload when language changes
 
-  const finalNavItems = navItems.length > 0 ? navItems : getFallbackNavigation(getTranslation);
+  const finalNavItems =
+    navItems.length > 0
+      ? navItems
+      : getFallbackNavigation(getTranslation, buildDocumentNavChildrenFromMock());
   
   // Debug logging
   console.log('🧭 Navigation Debug:', {
