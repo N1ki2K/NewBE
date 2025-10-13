@@ -58,10 +58,6 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
         if (!filename) {
           return null;
         }
-        const extension = filename.split('.').pop()?.toLowerCase();
-        if (extension !== 'pdf') {
-          return null;
-        }
         if (seen.has(filename)) {
           return null;
         }
