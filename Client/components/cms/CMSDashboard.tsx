@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useNavigationContext } from '../../context/NavigationContext';
 import { apiService } from '../../src/services/api';
 import { getApiBaseUrl, getApiEndpointBase } from '../../src/utils/apiBaseUrl';
 import ContactManagerTab from './ContactManagerTab';
 import InfoAccessManagerTab from './InfoAccessManagerTab';
 import CalendarManagerTab from './CalendarManagerTab';
 import PatronManagerTab from './PatronManagerTab';
-import UsefulLinksManagerTab from './UsefulLinksManagerTab';
 import ConfirmDialog from './ConfirmDialog';
 import { useConfirm } from '../../src/hooks/useConfirm'; // CORRECTED PATH
 import DocumentsMenuManagerTab from './DocumentsMenuManagerTab';
@@ -1763,16 +1763,133 @@ const sortGalleryImageList = (images: any[]): any[] => {
   const DocumentManagerTab: React.FC = () => {
   const { t } = useLanguage();
   const { isLoading, error } = useCMS();
+  const { reloadNavigation } = useNavigationContext();
   const [documents, setDocuments] = useState<any[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [documentsMenuItems, setDocumentsMenuItems] = useState<any[]>([]);
   const { confirm } = useConfirm();
   const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
 
-  // Load documents from Documents folder
   useEffect(() => {
     loadDocuments();
+    loadDocumentsMenuItems();
   }, []);
+
+  const flattenDocumentsMenuItems = (items: any[]): any[] => {
+    const result: any[] = [];
+    const traverse = (nodes: any[]) => {
+      if (!Array.isArray(nodes)) return;
+      nodes.forEach((node) => {
+        if (!node) return;
+        result.push(node);
+        if (Array.isArray(node.children) && node.children.length > 0) {
+          traverse(node.children);
+        }
+      });
+    };
+    traverse(items);
+    return result;
+  };
+
+  const loadDocumentsMenuItems = async () => {
+    try {
+      const response = await apiService.getNavigationMenuItems();
+      const documentsNode = response.items?.find((item: any) => item?.id === 'documents');
+      setDocumentsMenuItems(documentsNode?.children || []);
+    } catch (navError) {
+      console.error('❌ Failed to load documents menu items:', navError);
+      setDocumentsMenuItems([]);
+    }
+  };
+
+  const getExistingDocumentPaths = () => {
+    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
+    const paths = new Set<string>();
+    flattened.forEach((item) => {
+      if (item?.path) {
+        paths.add(item.path);
+      }
+    });
+    return paths;
+  };
+
+  const getNextDocumentPosition = () => {
+    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
+    let maxPosition = 0;
+    flattened.forEach((item) => {
+      if (typeof item?.position === 'number' && item.position > maxPosition) {
+        maxPosition = item.position;
+      }
+    });
+    return maxPosition + 1;
+  };
+
+  const deriveTitleFromFilename = (filename: string, originalName?: string) => {
+    const source = originalName || filename;
+    const withoutExtension = source.replace(/\.[^/.]+$/, '');
+    const humanized = withoutExtension.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return humanized.length > 0 ? humanized : source;
+  };
+
+  const ensureDocumentMenuEntry = async (
+    filename: string,
+    originalName: string,
+    existingPaths: Set<string>,
+    nextPositionRef: { value: number }
+  ): Promise<boolean> => {
+    const encodedFilename = encodeURIComponent(filename);
+    const extension = filename.split('.').pop()?.toLowerCase() || '';
+
+    if (extension !== 'pdf') {
+      return false;
+    }
+
+    const path = `/documents/embed/${encodedFilename}`;
+
+    if (existingPaths.has(path)) {
+      return false;
+    }
+
+    try {
+      await apiService.createNavigationMenuItem({
+        title: deriveTitleFromFilename(filename, originalName),
+        path,
+        position: nextPositionRef.value,
+        isActive: true,
+        parentId: 'documents'
+      });
+      existingPaths.add(path);
+      nextPositionRef.value += 1;
+      return true;
+    } catch (err) {
+      console.error('❌ Failed to create navigation menu item for document:', filename, err);
+      return false;
+    }
+  };
+
+  const removeDocumentMenuEntries = async (filename: string) => {
+    const encodedFilename = encodeURIComponent(filename);
+    const flattened = flattenDocumentsMenuItems(documentsMenuItems);
+    const toRemove = flattened.filter(
+      (item) => typeof item?.path === 'string' && item.path.includes(encodedFilename)
+    );
+
+    if (toRemove.length === 0) {
+      return;
+    }
+
+    for (const item of toRemove) {
+      try {
+        await apiService.deleteNavigationMenuItem(item.id);
+      } catch (err) {
+        console.error('❌ Failed to delete navigation menu item:', item.id, err);
+      }
+    }
+
+    await loadDocumentsMenuItems();
+    await reloadNavigation();
+  };
   
     const loadDocuments = async () => {
       try {
@@ -1786,10 +1903,13 @@ const sortGalleryImageList = (images: any[]): any[] => {
       }
     };
   
-    const handleFileUpload = async (files: FileList) => {
+  const handleFileUpload = async (files: FileList) => {
       const fileArray = Array.from(files);
       let successCount = 0;
       let errorCount = 0;
+      const existingPaths = getExistingDocumentPaths();
+      const nextPositionRef = { value: getNextDocumentPosition() };
+      let navigationUpdated = false;
   
       setIsUploading(true);
   
@@ -1799,6 +1919,16 @@ const sortGalleryImageList = (images: any[]): any[] => {
           const result = await apiService.uploadDocument(file);
           console.log('✅ Document uploaded successfully:', result);
           successCount++;
+
+          const menuCreated = await ensureDocumentMenuEntry(
+            result.filename,
+            result.originalName || file.name,
+            existingPaths,
+            nextPositionRef
+          );
+          if (menuCreated) {
+            navigationUpdated = true;
+          }
         } catch (error: any) {
           console.error('❌ Failed to upload document:', error);
           errorCount++;
@@ -1810,7 +1940,11 @@ const sortGalleryImageList = (images: any[]): any[] => {
   
       if (successCount > 0) {
         alert(t.cms.documentManager.uploadSuccess.replace('{count}', successCount.toString()));
-        loadDocuments();
+        await loadDocuments();
+        if (navigationUpdated) {
+          await loadDocumentsMenuItems();
+          await reloadNavigation();
+        }
       }
   
       if (errorCount > 0) {
@@ -1833,8 +1967,9 @@ const sortGalleryImageList = (images: any[]): any[] => {
   
       try {
         await apiService.deleteDocument(filename);
+        await removeDocumentMenuEntries(filename);
         alert(t.cms.documentManager.deleteSuccess);
-        loadDocuments();
+        await loadDocuments();
       } catch (error: any) {
         console.error('❌ Failed to delete document:', error);
         alert(t.cms.documentManager.deleteFailed.replace('{error}', error.message || 'Unknown error'));
