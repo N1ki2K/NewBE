@@ -1792,11 +1792,37 @@ const sortGalleryImageList = (images: any[]): any[] => {
     return result;
   };
 
+  const sortMenuItemsByPosition = (items: any[]): any[] => {
+    return [...items].sort((a, b) => {
+      const posA = typeof a?.position === 'number' ? a.position : 0;
+      const posB = typeof b?.position === 'number' ? b.position : 0;
+      if (posA === posB) {
+        return (a?.title || '').localeCompare(b?.title || '');
+      }
+      return posA - posB;
+    });
+  };
+
   const loadDocumentsMenuItems = async () => {
     try {
       const response = await apiService.getNavigationMenuItems();
-      const documentsNode = response.items?.find((item: any) => item?.id === 'documents');
-      setDocumentsMenuItems(documentsNode?.children || []);
+      const findNode = (nodes: any[], id: string): any | null => {
+        for (const node of nodes || []) {
+          if (!node) continue;
+          if (node.id === id) return node;
+          if (Array.isArray(node.children) && node.children.length > 0) {
+            const found = findNode(node.children, id);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const documentsNodeFromTree = findNode(response.tree || [], 'documents');
+      const directChildrenFromItems = (response.items || []).filter((item: any) => item?.parentId === 'documents');
+      const combinedChildren = documentsNodeFromTree?.children?.length
+        ? documentsNodeFromTree.children
+        : directChildrenFromItems;
+      setDocumentsMenuItems(combinedChildren || []);
     } catch (navError) {
       console.error('❌ Failed to load documents menu items:', navError);
       setDocumentsMenuItems([]);
@@ -1852,7 +1878,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
     }
 
     try {
-      await apiService.createNavigationMenuItem({
+      const response = await apiService.createNavigationMenuItem({
         title: deriveTitleFromFilename(filename, originalName),
         path,
         position: nextPositionRef.value,
@@ -1861,6 +1887,9 @@ const sortGalleryImageList = (images: any[]): any[] => {
       });
       existingPaths.add(path);
       nextPositionRef.value += 1;
+      if (response?.item) {
+        setDocumentsMenuItems((prev) => sortMenuItemsByPosition([...prev, response.item]));
+      }
       return true;
     } catch (err) {
       console.error('❌ Failed to create navigation menu item for document:', filename, err);
@@ -1889,6 +1918,12 @@ const sortGalleryImageList = (images: any[]): any[] => {
 
     await loadDocumentsMenuItems();
     await reloadNavigation();
+    if (toRemove.length > 0) {
+      setDocumentsMenuItems((prev) => {
+        const idsToRemove = new Set(toRemove.map((item) => item.id));
+        return prev.filter((item) => !idsToRemove.has(item.id));
+      });
+    }
   };
   
     const loadDocuments = async () => {
