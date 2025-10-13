@@ -2289,14 +2289,11 @@ const SchoolTeamTab: React.FC = () => {
     };
   
     const handleDeleteNews = async (article: any) => {
-      const confirmed = await confirm({
-        title: 'Delete News Article',
-        message: getTranslation("cms.newsManager.messages.deleteConfirm", "Are you sure you want to delete this news article?"),
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        isDangerous: true
-      });
-  
+      const confirmMessage = getTranslation(
+        "cms.newsManager.messages.deleteConfirm",
+        "Are you sure you want to delete this news article?"
+      );
+      const confirmed = window.confirm(confirmMessage);
       if (!confirmed) {
         return;
       }
