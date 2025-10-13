@@ -3,14 +3,46 @@
 class EventsEndpoints
 {
     private const ALLOWED_TYPES = ['academic', 'extracurricular', 'meeting', 'holiday', 'other'];
-    private const TABLE_NAME = 'evengs';
+    private const PRIMARY_TABLE = 'events';
+    private const LEGACY_TABLES = ['evengs'];
 
     /** @var Database */
     private $db;
+    /** @var string */
+    private $table;
 
     public function __construct()
     {
         $this->db = Database::getInstance();
+        try {
+            $this->table = $this->resolveTableName();
+        } catch (Exception $e) {
+            error_log('Events endpoint misconfiguration: ' . $e->getMessage());
+            errorResponse('Events table not found in database. Please ensure table "events" exists (legacy fallback "evengs").', 500);
+        }
+    }
+
+    private function resolveTableName(): string
+    {
+        $candidates = array_unique(array_merge([self::PRIMARY_TABLE], self::LEGACY_TABLES));
+
+        foreach ($candidates as $table) {
+            try {
+                $this->db->fetchColumn("SELECT 1 FROM {$table} LIMIT 1");
+                return $table;
+            } catch (Exception $e) {
+                $message = $e->getMessage();
+                if (
+                    stripos($message, 'Base table or view not found') !== false ||
+                    strpos($message, '42S02') !== false
+                ) {
+                    continue;
+                }
+                throw $e;
+            }
+        }
+
+        throw new Exception('Events table not found (looked for: ' . implode(', ', $candidates) . ')');
     }
 
     public function handle(array $segments, string $method): void
@@ -176,7 +208,7 @@ class EventsEndpoints
                 locale,
                 created_at,
                 updated_at
-            FROM " . self::TABLE_NAME . "
+            FROM {$this->table}
             $whereClause
             ORDER BY date DESC, startTime ASC
         ";
@@ -223,7 +255,7 @@ class EventsEndpoints
             'locale' => $data['locale'],
         ];
 
-        $eventId = (int) $this->db->insert(self::TABLE_NAME, $insertData);
+        $eventId = (int) $this->db->insert($this->table, $insertData);
         $event = $this->findEvent($eventId);
 
         if (!$event) {
@@ -259,7 +291,7 @@ class EventsEndpoints
             'locale' => $data['locale'],
         ];
 
-        $this->db->update(self::TABLE_NAME, $updateData, 'id = :id', ['id' => $id]);
+        $this->db->update($this->table, $updateData, 'id = :id', ['id' => $id]);
 
         $event = $this->findEvent($id);
 
@@ -278,7 +310,7 @@ class EventsEndpoints
             errorResponse('Event not found', 404);
         }
 
-        $this->db->delete(self::TABLE_NAME, 'id = :id', ['id' => $id]);
+        $this->db->delete($this->table, 'id = :id', ['id' => $id]);
 
         successResponse(null, 'Event deleted successfully');
     }
@@ -317,7 +349,7 @@ class EventsEndpoints
                 locale,
                 created_at,
                 updated_at
-            FROM " . self::TABLE_NAME . "
+            FROM {$this->table}
             $whereClause
             ORDER BY date ASC, startTime ASC
             LIMIT $limit
@@ -344,7 +376,7 @@ class EventsEndpoints
                 locale,
                 created_at,
                 updated_at
-            FROM " . self::TABLE_NAME . "
+            FROM {$this->table}
             WHERE id = :id
         ";
 
