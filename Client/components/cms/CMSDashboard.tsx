@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCMS } from '../../context/CMSContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { apiService } from '../../src/services/api';
@@ -177,6 +177,47 @@ const ImagePicker: React.FC<InternalImagePickerProps> = ({
       </div>
     </div>
   );
+};
+
+const parseGalleryImageIndex = (id: string): number | null => {
+  if (!id) return null;
+  const match = id.match(/gallery-img(\d+)/i);
+  if (!match) return null;
+  const value = parseInt(match[1], 10);
+  return Number.isNaN(value) ? null : value;
+};
+
+const collectGalleryIndices = (images: any[]): Set<number> => {
+  const used = new Set<number>();
+  images.forEach((image) => {
+    const idx = parseGalleryImageIndex(image?.id);
+    if (idx !== null) {
+      used.add(idx);
+    }
+  });
+  return used;
+};
+
+const getNextGalleryIndex = (used: Set<number>): number => {
+  let candidate = 1;
+  while (used.has(candidate)) {
+    candidate += 1;
+  }
+  used.add(candidate);
+  return candidate;
+};
+
+const sortGalleryImageList = (images: any[]): any[] => {
+  return [...images].sort((a, b) => {
+    const idxA = parseGalleryImageIndex(a?.id) ?? Number.MAX_SAFE_INTEGER;
+    const idxB = parseGalleryImageIndex(b?.id) ?? Number.MAX_SAFE_INTEGER;
+    if (idxA !== idxB) {
+      return idxA - idxB;
+    }
+    const descA = a?.description || '';
+    const descB = b?.description || '';
+    return descA.localeCompare(descB);
+  });
 };
 
   // Original HistoryPageTab preserved for future use (commented out at user's request)
@@ -2728,35 +2769,30 @@ const SchoolTeamTab: React.FC = () => {
     const [editingImage, setEditingImage] = useState<any>(null);
     const [showImagePicker, setShowImagePicker] = useState(false);
     const { confirm } = useConfirm();
-  
+    const [isBulkUploading, setIsBulkUploading] = useState(false);
+    const bulkUploadInputRef = useRef<HTMLInputElement | null>(null);
+
+    const loadGalleryImages = useCallback(async () => {
+      try {
+        setIsLoadingImages(true);
+        const images = await apiService.getImagesByPage('gallery');
+        const sortedImages = sortGalleryImageList(images || []);
+        setGalleryImages(sortedImages);
+      } catch (error) {
+        console.error('❌ Failed to load gallery images:', error);
+      } finally {
+        setIsLoadingImages(false);
+      }
+    }, []);
+
     // Load gallery images from database
     useEffect(() => {
-      const loadGalleryImages = async () => {
-        try {
-          setIsLoadingImages(true);
-          const images = await apiService.getImagesByPage('gallery');
-          console.log('📸 Loaded gallery images:', images);
-          
-          // Sort by position or created_at
-          const sortedImages = images.sort((a, b) => {
-            const posA = parseInt(a.id.replace('gallery-img', '')) || 0;
-            const posB = parseInt(b.id.replace('gallery-img', '')) || 0;
-            return posA - posB;
-          });
-          
-          setGalleryImages(sortedImages);
-        } catch (error) {
-          console.error('❌ Failed to load gallery images:', error);
-        } finally {
-          setIsLoadingImages(false);
-        }
-      };
-  
       loadGalleryImages();
-    }, []);
+    }, [loadGalleryImages]);
   
     const handleAddImage = () => {
-      const nextId = `gallery-img${galleryImages.length + 1}`;
+      const usedIndices = collectGalleryIndices(galleryImages);
+      const nextId = `gallery-img${getNextGalleryIndex(usedIndices)}`;
       setEditingImage({
         id: nextId,
         url: '',
@@ -2771,6 +2807,52 @@ const SchoolTeamTab: React.FC = () => {
       setEditingImage({ ...image });
       setShowAddForm(true);
     };
+
+    const handleBulkUpload = async (fileList: FileList | null) => {
+      if (!fileList || fileList.length === 0) {
+        return;
+      }
+
+      const files = Array.from(fileList);
+      const usedIndices = collectGalleryIndices(galleryImages);
+      const newImages: any[] = [];
+
+      try {
+        setIsBulkUploading(true);
+
+        for (const file of files) {
+          const uploadResult = await apiService.uploadImageToPictures(file);
+          const nextIndex = getNextGalleryIndex(usedIndices);
+          const newId = `gallery-img${nextIndex}`;
+          const filename = uploadResult.filename;
+          const originalName = uploadResult.originalName || filename;
+          const imageData = {
+            filename,
+            original_name: originalName,
+            url: uploadResult.url,
+            alt_text: originalName,
+            page_id: 'gallery',
+            description: originalName
+          };
+
+          await apiService.setImageMapping(newId, imageData);
+          newImages.push({ id: newId, ...imageData });
+        }
+
+        if (newImages.length > 0) {
+          setGalleryImages(prev => sortGalleryImageList([...prev, ...newImages]));
+          alert(`Successfully added ${newImages.length} image${newImages.length > 1 ? 's' : ''} to the gallery!`);
+        }
+      } catch (error: any) {
+        console.error('Failed to upload gallery images:', error);
+        alert(`Failed to upload gallery images: ${error.message || 'Unknown error'}`);
+      } finally {
+        setIsBulkUploading(false);
+        if (bulkUploadInputRef.current) {
+          bulkUploadInputRef.current.value = '';
+        }
+      }
+    };
   
     const handleDeleteImage = async (imageId: string) => {
       const confirmed = window.confirm('Are you sure you want to delete this image from the gallery?');
@@ -2778,7 +2860,7 @@ const SchoolTeamTab: React.FC = () => {
   
       try {
         await apiService.deleteImageMapping(imageId);
-        setGalleryImages(prev => prev.filter(img => img.id !== imageId));
+        setGalleryImages(prev => sortGalleryImageList(prev.filter(img => img.id !== imageId)));
       } catch (error) {
         console.error('Failed to delete image:', error);
       }
@@ -2827,8 +2909,10 @@ const SchoolTeamTab: React.FC = () => {
           }
         }
   
+        const computedFilename = editingImage.filename || extractFilenameFromUrl(editingImage.url);
         const imageData = {
-          filename: editingImage.filename || extractFilenameFromUrl(editingImage.url),
+          filename: computedFilename,
+          original_name: computedFilename,
           url: editingImage.url,
           alt_text: editingImage.alt_text || 'Gallery image',
           page_id: 'gallery',
@@ -2838,11 +2922,13 @@ const SchoolTeamTab: React.FC = () => {
         if (existingImageWithId) {
           await apiService.updateImageMapping(editingImage.id, imageData);
           setGalleryImages(prev => 
-            prev.map(img => img.id === editingImage.id ? { ...img, ...imageData } : img)
+            sortGalleryImageList(
+              prev.map(img => img.id === editingImage.id ? { ...img, ...imageData } : img)
+            )
           );
         } else {
           await apiService.setImageMapping(editingImage.id, imageData);
-          setGalleryImages(prev => [...prev, { id: editingImage.id, ...imageData }]);
+          setGalleryImages(prev => sortGalleryImageList([...prev, { id: editingImage.id, ...imageData }]));
         }
   
         setShowAddForm(false);
@@ -2888,46 +2974,67 @@ const SchoolTeamTab: React.FC = () => {
     };
   
     return (
-      <div className="space-y-6">
-        <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-          <h3 className="text-lg font-semibold text-blue-800 mb-2">
-            Gallery Management
-          </h3>
-          <p className="text-sm text-blue-700">
-            Manage gallery images. Add, edit, reorder, and delete images that appear in the photo gallery.
-          </p>
-        </div>
-  
-        {error && (
-          <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
+      <>
+        <input
+          ref={bulkUploadInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(event) => handleBulkUpload(event.target.files)}
+        />
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">
+              Gallery Management
+            </h3>
+            <p className="text-sm text-blue-700">
+              Manage gallery images. Add, edit, reorder, and delete images that appear in the photo gallery.
+            </p>
           </div>
-        )}
   
-        {/* Add New Image Button */}
-        <div className="flex justify-between items-center">
-          <h4 className="text-xl font-semibold text-gray-800">
-            Gallery Images ({galleryImages.length})
-          </h4>
-          <button
-            onClick={handleAddImage}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add Gallery Image
-          </button>
-        </div>
+          {error && (
+            <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
   
-        {/* Gallery Images Grid */}
-        {isLoadingImages ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-gray-500 mt-2">Loading gallery images...</p>
+          {/* Add New Image Button */}
+          <div className="flex justify-between items-center">
+            <h4 className="text-xl font-semibold text-gray-800">
+              Gallery Images ({galleryImages.length})
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => bulkUploadInputRef.current?.click()}
+                disabled={isBulkUploading}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v16h16M4 8h12m-6-4l4 4m2 4l4 4" />
+                </svg>
+                {isBulkUploading ? 'Uploading...' : 'Upload Images'}
+              </button>
+              <button
+                onClick={handleAddImage}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Gallery Image
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+  
+          {/* Gallery Images Grid */}
+          {isLoadingImages ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-2">Loading gallery images...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {galleryImages.map((image, index) => {
               // Check if this image is a duplicate (same URL or filename as another image)
               const isDuplicateUrl = galleryImages.some((other, otherIndex) => 
@@ -3032,10 +3139,10 @@ const SchoolTeamTab: React.FC = () => {
               </div>
             )}
           </div>
-        )}
+          )}
   
-        {/* Add/Edit Image Modal */}
-        {showAddForm && editingImage && (
+          {/* Add/Edit Image Modal */}
+          {showAddForm && editingImage && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold mb-4">
@@ -3132,8 +3239,8 @@ const SchoolTeamTab: React.FC = () => {
           </div>
         )}
   
-        {/* Image Picker Modal */}
-        {showImagePicker && (
+          {/* Image Picker Modal */}
+          {showImagePicker && (
           <ImagePicker
             onImageSelect={handleImageSelect}
             currentImage={editingImage?.url}
@@ -3141,19 +3248,20 @@ const SchoolTeamTab: React.FC = () => {
           />
         )}
   
-        {/* Preview Link */}
-        <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-          <h4 className="text-sm font-medium text-green-800 mb-2">👀 Preview Changes</h4>
-          <a
-            href="/gallery"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-          >
-            View Gallery Page
-          </a>
+          {/* Preview Link */}
+          <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-green-800 mb-2">👀 Preview Changes</h4>
+            <a
+              href="/gallery"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+            >
+              View Gallery Page
+            </a>
+          </div>
         </div>
-      </div>
+      </>
     );
   };
   
