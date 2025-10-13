@@ -567,7 +567,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
 //   };
 // 
 
-const SchoolTeamTab: React.FC = () => {
+  const SchoolTeamTab: React.FC = () => {
     const { t } = useLanguage();
     const { 
       getSchoolStaff, 
@@ -585,6 +585,7 @@ const SchoolTeamTab: React.FC = () => {
     const [staffImages, setStaffImages] = useState<{[key: string]: any}>({});
     const [showTeamPhotoManager, setShowTeamPhotoManager] = useState(false);
     const [teamGroupPhoto, setTeamGroupPhoto] = useState<string | null>(null);
+    const [previewImage, setPreviewImage] = useState<{ url: string; alt: string } | null>(null);
     const apiBaseUrl = getApiBaseUrl();
   
     useEffect(() => {
@@ -839,7 +840,11 @@ const SchoolTeamTab: React.FC = () => {
                   <img 
                     src={`${apiBaseUrl}${staffImages[member.id].image_url}`}
                     alt={staffImages[member.id].alt_text || member.name} 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-105"
+                    onClick={() => setPreviewImage({
+                      url: `${apiBaseUrl}${staffImages[member.id].image_url}`,
+                      alt: staffImages[member.id].alt_text || member.name || 'Team member image'
+                    })}
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
                     }}
@@ -936,7 +941,11 @@ const SchoolTeamTab: React.FC = () => {
                         <img 
                           src={`${apiBaseUrl}${staffImages[editingMember.id].image_url}`}
                           alt="Preview" 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-105"
+                          onClick={() => setPreviewImage({
+                            url: `${apiBaseUrl}${staffImages[editingMember.id].image_url}`,
+                            alt: staffImages[editingMember.id].alt_text || editingMember.name || 'Team member image'
+                          })}
                         />
                       ) : (
                         <div className="w-full h-full bg-gray-300 flex items-center justify-center text-gray-600">
@@ -1121,6 +1130,41 @@ const SchoolTeamTab: React.FC = () => {
             currentImage={staffImages[editingMember?.id]?.image_url}
             onClose={() => setShowImagePicker(false)}
           />
+        )}
+
+        {/* Image Preview Modal */}
+        {previewImage && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                setPreviewImage(null);
+              }
+            }}
+          >
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+              <div className="flex justify-between items-center px-4 py-3 border-b">
+                <h4 className="text-sm font-semibold text-gray-700 truncate">{previewImage.alt}</h4>
+                <button
+                  onClick={() => setPreviewImage(null)}
+                  className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
+                  aria-label="Close preview"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="bg-gray-100">
+                <img
+                  src={previewImage.url}
+                  alt={previewImage.alt}
+                  className="max-h-[70vh] w-full object-contain bg-gray-100"
+                  onError={(e) => {
+                    e.currentTarget.alt = 'Image preview not available';
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
