@@ -2773,14 +2773,7 @@ const SchoolTeamTab: React.FC = () => {
     };
   
     const handleDeleteImage = async (imageId: string) => {
-      const confirmed = await confirm({
-        title: 'Delete Gallery Image',
-        message: 'Are you sure you want to delete this image from the gallery?',
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        isDangerous: true
-      });
-  
+      const confirmed = window.confirm('Are you sure you want to delete this image from the gallery?');
       if (!confirmed) return;
   
       try {
