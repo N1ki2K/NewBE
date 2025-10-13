@@ -188,6 +188,11 @@ define('UPLOAD_DOCUMENTS_DIR', $customUploadBaseDir . 'documents/');
 define('UPLOAD_PRESENTATIONS_DIR', $customUploadBaseDir . 'presentations/');
 define('UPLOAD_MAX_SIZE', 500 * 1024 * 1024); // 500MB
 
+// Increase PHP runtime upload limits where possible
+if (function_exists('ini_set')) {
+    @ini_set('max_file_uploads', '69');
+}
+
 // Allowed file types (compatibility helpers)
 if (!function_exists('get_allowed_image_types')) {
     function get_allowed_image_types() {
