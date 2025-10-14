@@ -1296,8 +1296,7 @@ historyPage: {
       generic: 'Something went wrong while loading the presentations.',
       connection: 'Unable to reach the server. Please try again later.'
     },
-    retry: 'Try again',
-    legacyLink: 'Need the legacy view?'
+    retry: 'Try again'
   },
   common: {
     save: 'Save',

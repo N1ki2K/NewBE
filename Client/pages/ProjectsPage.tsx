@@ -214,15 +214,9 @@ const ProjectsPage: React.FC = () => {
           </div>
         )}
 
-        <div className="text-sm text-gray-500">
-          <Link to="/projects/presentations/embed/help" className="text-brand-blue hover:text-brand-blue-light">
-            {getTranslation('projectsPage.legacyLink', 'Нуждаете се от стария изглед?')}
-          </Link>
-        </div>
       </div>
     </PageWrapper>
   );
 };
 
 export default ProjectsPage;
-

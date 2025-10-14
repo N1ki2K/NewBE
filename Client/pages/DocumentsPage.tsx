@@ -214,11 +214,6 @@ const DocumentsPage: React.FC = () => {
           </div>
         )}
 
-        <div className="text-sm text-gray-500">
-          <Link to="/documents/embed/help" className="text-brand-blue hover:text-brand-blue-light">
-            {getTranslation('documentsPage.legacyLink', 'Нуждаете се от стария изглед?')}
-          </Link>
-        </div>
       </div>
     </PageWrapper>
   );

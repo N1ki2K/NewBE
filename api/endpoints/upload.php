@@ -306,7 +306,7 @@ class UploadEndpoints {
                 errorResponse('Failed to upload presentation', 500);
             }
 
-            $url = rtrim(UPLOAD_PRESENTATIONS_PUBLIC_PATH, '/') . '/' . $filename;
+            $url = '/presentations/' . rawurlencode($filename);
 
             // Save to media_files table
             $this->db->insert('media_files', [
