@@ -11,7 +11,7 @@ import { getFeaturedArticles } from '../src/data/hardcodedNews';
 const HeroSection: React.FC = () => {
   const { t, getTranslation } = useLanguage();
   return (
-    <div className="relative bg-brand-blue text-white overflow-hidden">
+    <div className="relative bg-brand-blue text-white overflow-hidden min-h-screen">
       <div className="absolute inset-0">
         <EditableImage 
           id="hero-background"
@@ -26,7 +26,7 @@ const HeroSection: React.FC = () => {
           className="absolute inset-0 w-full h-full object-cover opacity-75 mix-blend-multiply pointer-events-none select-none"
         />
       </div>
-      <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 md:py-32 text-center">
+      <div className="relative container mx-auto flex min-h-screen flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-16 sm:py-24 md:py-32 text-center">
         <EditableText
           id="hero-title"
           defaultContent={getTranslation('homePage.hero.title', 'Добре дошли в ОУ "Кольо Ганчев"')}
