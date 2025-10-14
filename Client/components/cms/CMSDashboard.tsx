@@ -1767,7 +1767,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
     const [documents, setDocuments] = useState<any[]>([]);
     const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
-    const { confirm } = useConfirm();
+    const { confirm, dialogProps } = useConfirm();
 
     useEffect(() => {
       loadDocuments();
@@ -2047,6 +2047,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
             </div>
           )}
         </div>
+        <ConfirmDialog {...dialogProps} />
       </div>
     );
   };
