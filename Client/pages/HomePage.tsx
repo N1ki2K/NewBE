@@ -11,7 +11,7 @@ import { getFeaturedArticles } from '../src/data/hardcodedNews';
 const HeroSection: React.FC = () => {
   const { t, getTranslation } = useLanguage();
   return (
-    <div className="relative bg-brand-blue text-white overflow-hidden min-h-screen">
+    <div className="relative bg-brand-blue text-white overflow-hidden h-100vh min-h-screen">
       <div className="absolute inset-0">
         <EditableImage 
           id="hero-background"
