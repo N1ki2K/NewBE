@@ -182,7 +182,7 @@ if (!function_exists('get_allowed_origins')) {
 // Upload Configuration
 $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) ? rtrim($_SERVER['DOCUMENT_ROOT'], '/\\') : dirname(__DIR__);
 $customUploadBaseDir = $documentRoot . '/public/uploads/';
-$documentsBaseDir = $customUploadBaseDir . 'documents/';
+$documentsBaseDir = $customUploadBaseDir . '/public/uploads/documents/';
 
 define('UPLOAD_DIR', $customUploadBaseDir);
 define('UPLOAD_PICTURES_DIR', $customUploadBaseDir . 'pictures/');

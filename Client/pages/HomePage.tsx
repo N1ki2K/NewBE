@@ -31,13 +31,13 @@ const HeroSection: React.FC = () => {
           id="hero-title"
           defaultContent={getTranslation('homePage.hero.title', 'Добре дошли в ОУ "Кольо Ганчев"')}
           tag="h1"
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white animate-fade-in-up leading-tight"
+          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white animate-fade-in-up leading-tight drop-shadow-lg"
         />
         <EditableText
           id="hero-subtitle"
           defaultContent={getTranslation('homePage.hero.subtitle', 'Съвременно образование с традиции')}
           tag="p"
-          className="mt-4 sm:mt-6 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-brand-gold-light animate-fade-in-up px-4"
+          className="mt-4 sm:mt-6 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-brand-gold-light animate-fade-in-up px-4 drop-shadow"
         />
         <div className="mt-8 sm:mt-10 animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
           <Link to="/documents/admissions" className="inline-block bg-brand-gold text-brand-blue-dark font-bold py-3 px-6 sm:px-8 rounded-full hover:bg-brand-gold-light transition-transform duration-300 transform hover:scale-105 text-sm sm:text-base">
