@@ -1539,7 +1539,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
     const [picturesImages, setPicturesImages] = useState<any[]>([]);
     const [isLoadingImages, setIsLoadingImages] = useState(true);
     const [isUploading, setIsUploading] = useState(false);
-    const { confirm } = useConfirm();
+    const { confirm, dialogProps } = useConfirm();
     const apiBaseUrl = getApiBaseUrl();
   
     // Load images from Pictures folder
@@ -1757,6 +1757,7 @@ const sortGalleryImageList = (images: any[]): any[] => {
             </div>
           )}
         </div>
+        <ConfirmDialog {...dialogProps} />
       </div>
     );
   };
