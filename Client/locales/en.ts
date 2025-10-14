@@ -1282,6 +1282,23 @@ historyPage: {
       }
     }
   },
+  projectsPage: {
+    title: 'Project Presentations',
+    description: 'Browse all available presentations and download them for classroom use.',
+    loading: 'Loading presentations...',
+    empty: 'No presentations are available at the moment.',
+    download: 'Download file',
+    previewUnavailable: 'Preview is not available for this file type. Please download it to view.',
+    currentPresentation: 'Selected presentation',
+    updated: 'Updated on',
+    error: {
+      title: 'An error occurred',
+      generic: 'Something went wrong while loading the presentations.',
+      connection: 'Unable to reach the server. Please try again later.'
+    },
+    retry: 'Try again',
+    legacyLink: 'Need the legacy view?'
+  },
   common: {
     save: 'Save',
     cancel: 'Cancel',

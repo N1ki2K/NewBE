@@ -94,7 +94,8 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
 
   const withDocumentChildren = (items: NavItem[], _documentChildren: NavItem[]): NavItem[] => {
     return items.map((item) => {
-      if (normalizePath(item.path) === '/documents') {
+      const normalized = normalizePath(item.path);
+      if (normalized === '/documents' || normalized === '/projects') {
         return {
           ...item,
           children: undefined,
@@ -268,12 +269,9 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
                     : convertDynamicChildren(documentsNav?.children))
               };
             } else if (pageId === 'projects') {
-              // Use dynamic navigation items for projects
-              const projectsNav = dynamicNavItems.find(item => item.id === 'projects');
               navItem = {
                 label: getTranslatedLabel(page.id, page.name),
                 path: page.path,
-                children: convertDynamicChildren(projectsNav?.children)
               };
             } else {
               // Use the already-structured children from backend
