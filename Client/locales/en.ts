@@ -1283,8 +1283,7 @@ historyPage: {
     }
   },
   projectsPage: {
-    title: 'Project Presentations',
-    description: 'Browse all available presentations and download them for classroom use.',
+    title: 'Projects',
     loading: 'Loading presentations...',
     empty: 'No presentations are available at the moment.',
     download: 'Download file',

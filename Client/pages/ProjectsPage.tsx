@@ -83,6 +83,11 @@ const ProjectsPage: React.FC = () => {
 
   const isPdf = (filename: string) => filename.toLowerCase().endsWith('.pdf');
 
+  const isPowerPoint = (filename: string) => {
+    const lower = filename.toLowerCase();
+    return lower.endsWith('.ppt') || lower.endsWith('.pptx');
+  };
+
   const renderViewer = () => {
     if (!selectedPresentation) {
       return null;
@@ -95,6 +100,24 @@ const ProjectsPage: React.FC = () => {
           filename={selectedPresentation.filename}
           title={selectedPresentation.filename}
         />
+      );
+    }
+
+    if (isPowerPoint(selectedPresentation.filename)) {
+      const fileUrl = `${downloadBaseUrl}${encodeURIComponent(selectedPresentation.filename)}`;
+      const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+
+      return (
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <iframe
+            key={viewerUrl}
+            src={viewerUrl}
+            title={selectedPresentation.filename}
+            className="w-full"
+            style={{ minHeight: '600px' }}
+            allowFullScreen
+          />
+        </div>
       );
     }
 
@@ -122,15 +145,8 @@ const ProjectsPage: React.FC = () => {
   };
 
   return (
-    <PageWrapper title={getTranslation('projectsPage.title', 'Презентации')}>
+    <PageWrapper title={getTranslation('projectsPage.title', 'Проекти')}>
       <div className="space-y-8">
-        <p className="text-lg text-gray-600">
-          {getTranslation(
-            'projectsPage.description',
-            'Разгледайте наличните презентации и ги изтеглете за използване в учебни дейности.'
-          )}
-        </p>
-
         {isLoading && (
           <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
             <div className="animate-spin h-8 w-8 border-b-2 border-brand-blue mx-auto mb-4 rounded-full" />
