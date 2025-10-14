@@ -92,15 +92,12 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
     return trimmed === '' ? '/' : trimmed;
   };
 
-  const withDocumentChildren = (items: NavItem[], documentChildren: NavItem[]): NavItem[] => {
-    if (documentChildren.length === 0) {
-      return items;
-    }
+  const withDocumentChildren = (items: NavItem[], _documentChildren: NavItem[]): NavItem[] => {
     return items.map((item) => {
       if (normalizePath(item.path) === '/documents') {
         return {
           ...item,
-          children: documentChildren,
+          children: undefined,
         };
       }
       return item;
