@@ -65,7 +65,7 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({ children
         const label = title && title.trim().length > 0 ? title : humanizeFilename(filename);
         return {
           label,
-          path: `/documents/pdf/${encodeURIComponent(filename)}`,
+          path: `/documents?file=${encodeURIComponent(filename)}`,
         };
       })
       .filter((item): item is NavItem => Boolean(item));

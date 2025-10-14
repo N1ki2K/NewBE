@@ -27,6 +27,7 @@ import EventsPage from './pages/EventsPage';
 import PDFDocumentPage from './pages/documents/PDFDocumentPage';
 import PresentationViewerPage from './pages/projects/PresentationViewerPage';
 import PresentationEmbedPage from './pages/projects/PresentationEmbedPage';
+import DocumentsPage from './pages/DocumentsPage';
 // import Home from './pages/Home';
 // import CreatePost from './pages/CreatePost';
 
@@ -50,6 +51,7 @@ const App: React.FC = () => {
               <Route path="/school/news" element={<SchoolNewsPage />} />
 
               {/* Документи */}
+              <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/documents/embed/:filename" element={<PDFDocumentPage />} />
               <Route path="/documents/pdf/:filename" element={<PDFDocumentPage />} />
               <Route path="/documents/*" element={<DynamicPage />} />
