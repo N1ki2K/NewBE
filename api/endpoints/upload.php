@@ -224,28 +224,7 @@ class UploadEndpoints {
             ]);
         } catch (Exception $e) {
             error_log('Document upload failed: ' . $e->getMessage());
-           const label = title && title.trim().length > 0 ? title : humanizeFilename(filename);
-        return {
-          label,
-          path: `public/uploads/documents/${encodeURIComponent(filename)}`,
-        };
-      })
-      .filter((item): item is NavItem => Boolean(item));
-
-    return docs.sort((a, b) =>
-      a.label.localeCompare(b.label, language === 'bg' ? 'bg' : 'en', { sensitivity: 'base' })
-    );
-  };
-
-  const loadDocumentNavChildren = async (): Promise<NavItem[]> => {
-    try {
-      const response = await apiService.getDocuments();
-      const fromApi = buildDocumentNavChildren(response.documents || []);
-      return fromApi;
-    } catch (docError) {
-      console.warn('Failed to load documents for navigation:', docError);
-      return [];
-    } errorResponse('Document upload failed: ' . $e->getMessage(), 500);
+            errorResponse('Document upload failed: ' . $e->getMessage(), 500);
         }
     }
 
